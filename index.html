@@ -1,0 +1,709 @@
+import { useState, useEffect } from 'react';
+import { Button } from "/components/ui/button";
+import { Input } from "/components/ui/input";
+import { Label } from "/components/ui/label";
+import { Textarea } from "/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card";
+import { Plus, Minus, ShoppingCart, Edit, Trash, X, Check, Upload } from "lucide-react";
+
+// Types
+type CandyItem = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image?: string;
+};
+
+type CartItem = {
+  candy: CandyItem;
+  quantity: number;
+};
+
+type Order = {
+  id: string;
+  customerName: string;
+  pickupLocation: string;
+  items: CartItem[];
+  total: number;
+  timestamp: Date;
+};
+
+// Initial candy data
+const initialCandyItems: CandyItem[] = [
+  { id: '1', name: 'Gummy Bears', description: 'Assorted fruit-flavored gummy bears', price: 3.99, image: 'gummy-bears' },
+  { id: '2', name: 'Chocolate Bar', description: 'Rich milk chocolate bar', price: 2.50, image: 'chocolate-bar' },
+  { id: '3', name: 'Sour Worms', description: 'Tangy sour gummy worms', price: 4.25, image: 'sour-worms' },
+  { id: '4', name: 'Lollipop Set', description: 'Assorted rainbow lollipops', price: 5.00, image: 'lollipops' },
+  { id: '5', name: 'Candy Canes', description: 'Peppermint candy canes', price: 3.25, image: 'candy-canes' },
+  { id: '6', name: 'Jelly Beans', description: 'Classic mixed jelly beans', price: 4.75, image: 'jelly-beans' },
+];
+
+export default function TwistedTreatsCandyShop() {
+  // State management
+  const [candyItems, setCandyItems] = useState<CandyItem[]>(initialCandyItems);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isStaffMode, setIsStaffMode] = useState(false);
+  const [staffPassword, setStaffPassword] = useState('');
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [pickupLocation, setPickupLocation] = useState('');
+  const [newCandy, setNewCandy] = useState<Omit<CandyItem, 'id'>>({ name: '', description: '', price: 0, image: '' });
+  const [editingCandy, setEditingCandy] = useState<CandyItem | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Filter candy items based on search term
+  const filteredCandyItems = candyItems.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Add item to cart
+  const addToCart = (candy: CandyItem) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.candy.id === candy.id);
+      if (existingItem) {
+        return prevCart.map(item => 
+          item.candy.id === candy.id 
+            ? { ...item, quantity: item.quantity + 1 } 
+            : item
+        );
+      } else {
+        return [...prevCart, { candy, quantity: 1 }];
+      }
+    });
+  };
+
+  // Remove item from cart
+  const removeFromCart = (candyId: string) => {
+    setCart(prevCart => prevCart.filter(item => item.candy.id !== candyId));
+  };
+
+  // Update item quantity in cart
+  const updateQuantity = (candyId: string, quantity: number) => {
+    if (quantity < 1) return;
+    setCart(prevCart => 
+      prevCart.map(item => 
+        item.candy.id === candyId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  // Calculate cart total
+  const cartTotal = cart.reduce((total, item) => total + (item.candy.price * item.quantity), 0);
+
+  // Handle checkout
+  const handleCheckout = () => {
+    if (!customerName || !pickupLocation) {
+      alert('Please enter your name and pickup location');
+      return;
+    }
+
+    const newOrder: Order = {
+      id: `order-${Date.now()}`,
+      customerName,
+      pickupLocation,
+      items: [...cart],
+      total: cartTotal,
+      timestamp: new Date(),
+    };
+
+    setOrders(prev => [...prev, newOrder]);
+    setCart([]);
+    setCustomerName('');
+    setPickupLocation('');
+    setShowCart(false);
+    alert('Order placed successfully!');
+  };
+
+  // Staff login
+  const handleStaffLogin = () => {
+    if (staffPassword === 'otter123') {
+      setIsStaffMode(true);
+      setShowLoginForm(false);
+      setStaffPassword('');
+    } else {
+      alert('Incorrect password');
+    }
+  };
+
+  // Staff logout
+  const handleStaffLogout = () => {
+    setIsStaffMode(false);
+    setEditingCandy(null);
+    setImagePreview(null);
+  };
+
+  // Handle image upload for new candy
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEditing = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+      if (isEditing && editingCandy) {
+        setEditingCandy({ ...editingCandy, image: imageData });
+      } else {
+        setNewCandy({ ...newCandy, image: imageData });
+      }
+      setImagePreview(imageData);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Add new candy item
+  const handleAddCandy = () => {
+    if (!newCandy.name || !newCandy.description || newCandy.price <= 0) {
+      alert('Please fill all fields correctly');
+      return;
+    }
+
+    const candyItem: CandyItem = {
+      ...newCandy,
+      id: `candy-${Date.now()}`,
+    };
+
+    setCandyItems(prev => [...prev, candyItem]);
+    setNewCandy({ name: '', description: '', price: 0, image: '' });
+    setImagePreview(null);
+  };
+
+  // Update candy item
+  const handleUpdateCandy = () => {
+    if (!editingCandy) return;
+    
+    setCandyItems(prev => 
+      prev.map(item => 
+        item.id === editingCandy.id ? editingCandy : item
+      )
+    );
+    
+    setEditingCandy(null);
+    setImagePreview(null);
+  };
+
+  // Delete candy item
+  const handleDeleteCandy = (id: string) => {
+    setCandyItems(prev => prev.filter(item => item.id !== id));
+    setCart(prev => prev.filter(item => item.candy.id !== id));
+  };
+
+  // Close order
+  const handleCloseOrder = (id: string) => {
+    setOrders(prev => prev.filter(order => order.id !== id));
+  };
+
+  // Render candy image
+  const renderCandyImage = (image: string | undefined) => {
+    if (image && image.startsWith('data:')) {
+      return <img src={image} alt="Candy" className="w-full h-32 object-cover rounded-t-lg" />;
+    }
+    
+    // Default emoji images based on candy name
+    const emojiMap: Record<string, string> = {
+      'gummy': '🐻',
+      'chocolate': '🍫',
+      'sour': '🤢',
+      'lollipop': '🍭',
+      'cane': '🎄',
+      'jelly': '🪱',
+      'bean': '🫘'
+    };
+    
+    const emoji = Object.entries(emojiMap).find(([key]) => 
+      image?.toLowerCase().includes(key) || 
+      (editingCandy?.name.toLowerCase().includes(key) || 
+       newCandy.name.toLowerCase().includes(key))
+    )?.[1] || '🍭';
+    
+    return (
+      <div className="w-full h-32 bg-gradient-to-r from-yellow-300 to-red-400 flex items-center justify-center rounded-t-lg">
+        <span className="text-5xl">{emoji}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-yellow-400 via-red-500 to-red-600 p-4">
+      {/* Header with candy border */}
+      <header className="text-center py-6 mb-6 border-b-4 border-t-4 border-dashed border-yellow-300">
+        <div className="flex justify-center text-4xl mb-2">
+          🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
+        </div>
+        <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">Twisted Treats Candy Shop</h1>
+        <p className="text-lg text-yellow-200 mt-2 font-medium">Sweet Delights for Everyone!</p>
+        <div className="flex justify-center text-4xl mt-2">
+          🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
+        </div>
+      </header>
+
+      {/* Staff Login/Logout */}
+      <div className="flex justify-between items-center mb-6">
+        {isStaffMode ? (
+          <Button 
+            onClick={handleStaffLogout}
+            className="bg-white text-red-600 hover:bg-gray-100 font-bold"
+          >
+            Staff Logout
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => setShowLoginForm(true)}
+            className="bg-yellow-300 text-red-700 hover:bg-yellow-200 font-bold"
+          >
+            Staff Login
+          </Button>
+        )}
+        
+        <Button 
+          onClick={() => setShowCart(true)}
+          className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 font-bold"
+        >
+          <ShoppingCart className="h-4 w-4" />
+          Cart ({cart.reduce((total, item) => total + item.quantity, 0)})
+        </Button>
+      </div>
+
+      {/* Staff Login Form */}
+      {showLoginForm && (
+        <Card className="max-w-md mx-auto mb-6 border-4 border-yellow-300 bg-white">
+          <CardHeader>
+            <CardTitle className="text-center text-red-600">Staff Login</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="password" className="text-red-700">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={staffPassword}
+                  onChange={(e) => setStaffPassword(e.target.value)}
+                  placeholder="Enter staff password"
+                  className="border-2 border-yellow-400"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleStaffLogin}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold"
+                >
+                  Login
+                </Button>
+                <Button 
+                  onClick={() => setShowLoginForm(false)}
+                  variant="outline"
+                  className="border-2 border-red-500 text-red-500 hover:bg-red-50"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Staff Mode - Add Candy Form */}
+      {isStaffMode && !editingCandy && (
+        <Card className="max-w-2xl mx-auto mb-8 border-4 border-yellow-300 bg-white">
+          <CardHeader>
+            <CardTitle className="text-center text-red-600">Add New Candy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="candy-image" className="text-red-700">Candy Image</Label>
+                <div className="flex items-center gap-4">
+                  <div className="border-2 border-dashed border-yellow-400 rounded-lg w-32 h-32 flex items-center justify-center">
+                    {newCandy.image ? (
+                      <img src={newCandy.image} alt="Preview" className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Upload className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      id="candy-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e)}
+                      className="hidden"
+                    />
+                    <Button 
+                      onClick={() => document.getElementById('candy-image')?.click()}
+                      className="bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Image
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="candy-name" className="text-red-700">Candy Name</Label>
+                <Input
+                  id="candy-name"
+                  value={newCandy.name}
+                  onChange={(e) => setNewCandy({...newCandy, name: e.target.value})}
+                  placeholder="Enter candy name"
+                  className="border-2 border-yellow-400"
+                />
+              </div>
+              <div>
+                <Label htmlFor="candy-price" className="text-red-700">Price ($)</Label>
+                <Input
+                  id="candy-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newCandy.price}
+                  onChange={(e) => setNewCandy({...newCandy, price: parseFloat(e.target.value) || 0})}
+                  placeholder="Enter price"
+                  className="border-2 border-yellow-400"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="candy-description" className="text-red-700">Description</Label>
+                <Textarea
+                  id="candy-description"
+                  value={newCandy.description}
+                  onChange={(e) => setNewCandy({...newCandy, description: e.target.value})}
+                  placeholder="Enter candy description"
+                  className="border-2 border-yellow-400"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Button 
+                  onClick={handleAddCandy}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold"
+                >
+                  Add Candy
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Staff Mode - Edit Candy Form */}
+      {isStaffMode && editingCandy && (
+        <Card className="max-w-2xl mx-auto mb-8 border-4 border-yellow-300 bg-white">
+          <CardHeader>
+            <CardTitle className="text-center text-red-600">Edit Candy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="edit-candy-image" className="text-red-700">Candy Image</Label>
+                <div className="flex items-center gap-4">
+                  <div className="border-2 border-dashed border-yellow-400 rounded-lg w-32 h-32 flex items-center justify-center">
+                    {editingCandy.image ? (
+                      <img src={editingCandy.image} alt="Preview" className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Upload className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      id="edit-candy-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, true)}
+                      className="hidden"
+                    />
+                    <Button 
+                      onClick={() => document.getElementById('edit-candy-image')?.click()}
+                      className="bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Change Image
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="edit-candy-name" className="text-red-700">Candy Name</Label>
+                <Input
+                  id="edit-candy-name"
+                  value={editingCandy.name}
+                  onChange={(e) => setEditingCandy({...editingCandy, name: e.target.value})}
+                  placeholder="Enter candy name"
+                  className="border-2 border-yellow-400"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-candy-price" className="text-red-700">Price ($)</Label>
+                <Input
+                  id="edit-candy-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingCandy.price}
+                  onChange={(e) => setEditingCandy({...editingCandy, price: parseFloat(e.target.value) || 0})}
+                  placeholder="Enter price"
+                  className="border-2 border-yellow-400"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="edit-candy-description" className="text-red-700">Description</Label>
+                <Textarea
+                  id="edit-candy-description"
+                  value={editingCandy.description}
+                  onChange={(e) => setEditingCandy({...editingCandy, description: e.target.value})}
+                  placeholder="Enter candy description"
+                  className="border-2 border-yellow-400"
+                />
+              </div>
+              <div className="md:col-span-2 flex gap-2">
+                <Button 
+                  onClick={handleUpdateCandy}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold"
+                >
+                  Update Candy
+                </Button>
+                <Button 
+                  onClick={() => setEditingCandy(null)}
+                  variant="outline"
+                  className="border-2 border-red-500 text-red-500 hover:bg-red-50"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Search Bar */}
+      <div className="max-w-md mx-auto mb-8">
+        <Input
+          type="text"
+          placeholder="Search candies..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="border-4 border-yellow-300 bg-white text-red-700 placeholder:text-red-400 font-medium"
+        />
+      </div>
+
+      {/* Candy Items Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        {filteredCandyItems.map((candy) => (
+          <Card 
+            key={candy.id} 
+            className="border-4 border-yellow-300 bg-white hover:shadow-xl transition-all"
+          >
+            {renderCandyImage(candy.image)}
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-xl text-red-700">{candy.name}</CardTitle>
+                {isStaffMode && (
+                  <div className="flex gap-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => setEditingCandy(candy)}
+                      className="border-yellow-400 text-yellow-600 hover:bg-yellow-100"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      onClick={() => handleDeleteCandy(candy.id)}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-3">{candy.description}</p>
+              <p className="text-lg font-bold text-red-600 mb-4">${candy.price.toFixed(2)}</p>
+              <Button 
+                onClick={() => addToCart(candy)}
+                className="w-full bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold"
+              >
+                Add to Cart
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Shopping Cart Modal */}
+      {showCart && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto border-4 border-yellow-400 bg-white">
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle className="text-2xl text-red-600">Your Shopping Cart</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowCart(false)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {cart.length === 0 ? (
+                <p className="text-center py-8 text-gray-500">Your cart is empty</p>
+              ) : (
+                <>
+                  <div className="space-y-4 mb-6">
+                    {cart.map((item) => (
+                      <div 
+                        key={item.candy.id} 
+                        className="flex items-center justify-between p-4 border-2 border-yellow-300 rounded-lg"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-16">
+                            {renderCandyImage(item.candy.image)}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-red-700">{item.candy.name}</h3>
+                            <p className="text-sm text-gray-600">${item.candy.price.toFixed(2)} each</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => updateQuantity(item.candy.id, item.quantity - 1)}
+                            className="border-yellow-400 text-yellow-600 hover:bg-yellow-100"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-8 text-center font-bold">{item.quantity}</span>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => updateQuantity(item.candy.id, item.quantity + 1)}
+                            className="border-yellow-400 text-yellow-600 hover:bg-yellow-100"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            onClick={() => removeFromCart(item.candy.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="border-t-2 border-yellow-300 pt-4">
+                    <div className="flex justify-between text-lg font-bold mb-4 text-red-700">
+                      <span>Total:</span>
+                      <span>${cartTotal.toFixed(2)}</span>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="customer-name" className="text-red-700">Your Name</Label>
+                        <Input
+                          id="customer-name"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Enter your name"
+                          className="border-2 border-yellow-400"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pickup-location" className="text-red-700">Pickup Location</Label>
+                        <Input
+                          id="pickup-location"
+                          value={pickupLocation}
+                          onChange={(e) => setPickupLocation(e.target.value)}
+                          placeholder="Enter pickup location"
+                          className="border-2 border-yellow-400"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleCheckout}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold"
+                      >
+                        Place Order
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Staff Mode - Orders Section */}
+      {isStaffMode && (
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-center mb-6 text-white drop-shadow">Order Management</h2>
+          
+          {orders.length === 0 ? (
+            <p className="text-center py-8 text-yellow-200">No orders yet</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {orders.map((order) => (
+                <Card key={order.id} className="border-4 border-yellow-300 bg-white">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg text-red-600">Order #{order.id.slice(-4)}</CardTitle>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        onClick={() => handleCloseOrder(order.id)}
+                      >
+                        Close Order
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {order.timestamp.toLocaleString()}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <p className="font-semibold text-red-700">Customer: {order.customerName}</p>
+                      <p className="text-sm text-gray-600">Pickup: {order.pickupLocation}</p>
+                    </div>
+                    
+                    <div className="space-y-2 mb-4">
+                      {order.items.map((item) => (
+                        <div key={item.candy.id} className="flex justify-between">
+                          <span>{item.candy.name} x{item.quantity}</span>
+                          <span>${(item.candy.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="flex justify-between font-bold border-t-2 border-yellow-300 pt-2 text-red-700">
+                      <span>Total:</span>
+                      <span>${order.total.toFixed(2)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer with candy border */}
+      <footer className="mt-12 pt-6 border-t-4 border-dashed border-yellow-300 text-center">
+        <div className="flex justify-center text-4xl mb-2">
+          🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
+        </div>
+        <p className="text-yellow-200 font-medium">© {new Date().getFullYear()} Twisted Treats Candy Shop</p>
+        <p className="text-sm text-yellow-100 mt-2">Sweetness delivered with a twist!</p>
+      </footer>
+    </div>
+  );
+}
