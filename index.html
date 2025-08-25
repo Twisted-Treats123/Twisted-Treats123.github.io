@@ -12,7 +12,7 @@ type CandyItem = {
   name: string;
   description: string;
   price: number;
-  image?: string;
+  image: string;
 };
 
 type CartItem = {
@@ -31,19 +31,40 @@ type Order = {
 
 // Initial candy data
 const initialCandyItems: CandyItem[] = [
-  { id: '1', name: 'Gummy Bears', description: 'Assorted fruit-flavored gummy bears', price: 3.99, image: 'gummy-bears' },
-  { id: '2', name: 'Chocolate Bar', description: 'Rich milk chocolate bar', price: 2.50, image: 'chocolate-bar' },
-  { id: '3', name: 'Sour Worms', description: 'Tangy sour gummy worms', price: 4.25, image: 'sour-worms' },
-  { id: '4', name: 'Lollipop Set', description: 'Assorted rainbow lollipops', price: 5.00, image: 'lollipops' },
-  { id: '5', name: 'Candy Canes', description: 'Peppermint candy canes', price: 3.25, image: 'candy-canes' },
-  { id: '6', name: 'Jelly Beans', description: 'Classic mixed jelly beans', price: 4.75, image: 'jelly-beans' },
+  { id: '1', name: 'Gummy Bears', description: 'Assorted fruit-flavored gummy bears', price: 3.99, image: '🍭' },
+  { id: '2', name: 'Chocolate Bar', description: 'Rich milk chocolate bar', price: 2.50, image: '🍫' },
+  { id: '3', name: 'Sour Worms', description: 'Tangy sour gummy worms', price: 4.25, image: '🐛' },
+  { id: '4', name: 'Lollipop Set', description: 'Assorted rainbow lollipops', price: 5.00, image: '🍭' },
+  { id: '5', name: 'Candy Canes', description: 'Peppermint candy canes', price: 3.25, image: '🍬' },
+  { id: '6', name: 'Jelly Beans', description: 'Classic mixed jelly beans', price: 4.75, image: '🫘' },
 ];
 
 export default function TwistedTreatsCandyShop() {
   // State management
-  const [candyItems, setCandyItems] = useState<CandyItem[]>(initialCandyItems);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [candyItems, setCandyItems] = useState<CandyItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedItems = localStorage.getItem('candyItems');
+      return savedItems ? JSON.parse(savedItems) : initialCandyItems;
+    }
+    return initialCandyItems;
+  });
+  
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedCart = localStorage.getItem('cart');
+      return savedCart ? JSON.parse(savedCart) : [];
+    }
+    return [];
+  });
+  
+  const [orders, setOrders] = useState<Order[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedOrders = localStorage.getItem('orders');
+      return savedOrders ? JSON.parse(savedOrders) : [];
+    }
+    return [];
+  });
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isStaffMode, setIsStaffMode] = useState(false);
   const [staffPassword, setStaffPassword] = useState('');
@@ -51,9 +72,33 @@ export default function TwistedTreatsCandyShop() {
   const [showCart, setShowCart] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [pickupLocation, setPickupLocation] = useState('');
-  const [newCandy, setNewCandy] = useState<Omit<CandyItem, 'id'>>({ name: '', description: '', price: 0, image: '' });
+  const [newCandy, setNewCandy] = useState<Omit<CandyItem, 'id'>>({ 
+    name: '', 
+    description: '', 
+    price: 0,
+    image: '🍭'
+  });
   const [editingCandy, setEditingCandy] = useState<CandyItem | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageInput, setImageInput] = useState('');
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('candyItems', JSON.stringify(candyItems));
+    }
+  }, [candyItems]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cart', JSON.stringify(cart));
+    }
+  }, [cart]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('orders', JSON.stringify(orders));
+    }
+  }, [orders]);
 
   // Filter candy items based on search term
   const filteredCandyItems = candyItems.filter(item => 
@@ -134,25 +179,6 @@ export default function TwistedTreatsCandyShop() {
   const handleStaffLogout = () => {
     setIsStaffMode(false);
     setEditingCandy(null);
-    setImagePreview(null);
-  };
-
-  // Handle image upload for new candy
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEditing = false) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageData = event.target?.result as string;
-      if (isEditing && editingCandy) {
-        setEditingCandy({ ...editingCandy, image: imageData });
-      } else {
-        setNewCandy({ ...newCandy, image: imageData });
-      }
-      setImagePreview(imageData);
-    };
-    reader.readAsDataURL(file);
   };
 
   // Add new candy item
@@ -168,8 +194,8 @@ export default function TwistedTreatsCandyShop() {
     };
 
     setCandyItems(prev => [...prev, candyItem]);
-    setNewCandy({ name: '', description: '', price: 0, image: '' });
-    setImagePreview(null);
+    setNewCandy({ name: '', description: '', price: 0, image: '🍭' });
+    setImageInput('');
   };
 
   // Update candy item
@@ -183,7 +209,7 @@ export default function TwistedTreatsCandyShop() {
     );
     
     setEditingCandy(null);
-    setImagePreview(null);
+    setImageInput('');
   };
 
   // Delete candy item
@@ -197,45 +223,27 @@ export default function TwistedTreatsCandyShop() {
     setOrders(prev => prev.filter(order => order.id !== id));
   };
 
-  // Render candy image
-  const renderCandyImage = (image: string | undefined) => {
-    if (image && image.startsWith('data:')) {
-      return <img src={image} alt="Candy" className="w-full h-32 object-cover rounded-t-lg" />;
+  // Handle image change
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setImageInput(value);
+    
+    if (editingCandy) {
+      setEditingCandy({ ...editingCandy, image: value });
+    } else {
+      setNewCandy({ ...newCandy, image: value });
     }
-    
-    // Default emoji images based on candy name
-    const emojiMap: Record<string, string> = {
-      'gummy': '🐻',
-      'chocolate': '🍫',
-      'sour': '🤢',
-      'lollipop': '🍭',
-      'cane': '🎄',
-      'jelly': '🪱',
-      'bean': '🫘'
-    };
-    
-    const emoji = Object.entries(emojiMap).find(([key]) => 
-      image?.toLowerCase().includes(key) || 
-      (editingCandy?.name.toLowerCase().includes(key) || 
-       newCandy.name.toLowerCase().includes(key))
-    )?.[1] || '🍭';
-    
-    return (
-      <div className="w-full h-32 bg-gradient-to-r from-yellow-300 to-red-400 flex items-center justify-center rounded-t-lg">
-        <span className="text-5xl">{emoji}</span>
-      </div>
-    );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-yellow-400 via-red-500 to-red-600 p-4">
+    <div className="min-h-screen bg-gradient-to-b from-yellow-400 to-red-500 p-4">
       {/* Header with candy border */}
-      <header className="text-center py-6 mb-6 border-b-4 border-t-4 border-dashed border-yellow-300">
+      <header className="text-center py-6 mb-6 border-b-4 border-t-4 border-dashed border-white">
         <div className="flex justify-center text-4xl mb-2">
           🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
         </div>
         <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">Twisted Treats Candy Shop</h1>
-        <p className="text-lg text-yellow-200 mt-2 font-medium">Sweet Delights for Everyone!</p>
+        <p className="text-lg text-yellow-100 mt-2 font-medium">Sweet Delights for Everyone!</p>
         <div className="flex justify-center text-4xl mt-2">
           🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
         </div>
@@ -246,14 +254,14 @@ export default function TwistedTreatsCandyShop() {
         {isStaffMode ? (
           <Button 
             onClick={handleStaffLogout}
-            className="bg-white text-red-600 hover:bg-gray-100 font-bold"
+            className="bg-red-600 hover:bg-red-700 text-white"
           >
             Staff Logout
           </Button>
         ) : (
           <Button 
             onClick={() => setShowLoginForm(true)}
-            className="bg-yellow-300 text-red-700 hover:bg-yellow-200 font-bold"
+            className="bg-yellow-500 hover:bg-yellow-600 text-white"
           >
             Staff Login
           </Button>
@@ -261,7 +269,7 @@ export default function TwistedTreatsCandyShop() {
         
         <Button 
           onClick={() => setShowCart(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 font-bold"
+          className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
         >
           <ShoppingCart className="h-4 w-4" />
           Cart ({cart.reduce((total, item) => total + item.quantity, 0)})
@@ -270,34 +278,34 @@ export default function TwistedTreatsCandyShop() {
 
       {/* Staff Login Form */}
       {showLoginForm && (
-        <Card className="max-w-md mx-auto mb-6 border-4 border-yellow-300 bg-white">
+        <Card className="max-w-md mx-auto mb-6 border-2 border-yellow-300 bg-white">
           <CardHeader>
-            <CardTitle className="text-center text-red-600">Staff Login</CardTitle>
+            <CardTitle className="text-center">Staff Login</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="password" className="text-red-700">Password</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={staffPassword}
                   onChange={(e) => setStaffPassword(e.target.value)}
                   placeholder="Enter staff password"
-                  className="border-2 border-yellow-400"
+                  className="border-yellow-300"
                 />
               </div>
               <div className="flex gap-2">
                 <Button 
                   onClick={handleStaffLogin}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold"
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
                 >
                   Login
                 </Button>
                 <Button 
                   onClick={() => setShowLoginForm(false)}
                   variant="outline"
-                  className="border-2 border-red-500 text-red-500 hover:bg-red-50"
+                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
                 >
                   Cancel
                 </Button>
@@ -309,52 +317,24 @@ export default function TwistedTreatsCandyShop() {
 
       {/* Staff Mode - Add Candy Form */}
       {isStaffMode && !editingCandy && (
-        <Card className="max-w-2xl mx-auto mb-8 border-4 border-yellow-300 bg-white">
+        <Card className="max-w-2xl mx-auto mb-8 border-2 border-yellow-300 bg-white">
           <CardHeader>
-            <CardTitle className="text-center text-red-600">Add New Candy</CardTitle>
+            <CardTitle className="text-center">Add New Candy</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="candy-image" className="text-red-700">Candy Image</Label>
-                <div className="flex items-center gap-4">
-                  <div className="border-2 border-dashed border-yellow-400 rounded-lg w-32 h-32 flex items-center justify-center">
-                    {newCandy.image ? (
-                      <img src={newCandy.image} alt="Preview" className="w-full h-full object-cover rounded-lg" />
-                    ) : (
-                      <Upload className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div>
-                    <Input
-                      id="candy-image"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e)}
-                      className="hidden"
-                    />
-                    <Button 
-                      onClick={() => document.getElementById('candy-image')?.click()}
-                      className="bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Image
-                    </Button>
-                  </div>
-                </div>
-              </div>
               <div>
-                <Label htmlFor="candy-name" className="text-red-700">Candy Name</Label>
+                <Label htmlFor="candy-name">Candy Name</Label>
                 <Input
                   id="candy-name"
                   value={newCandy.name}
                   onChange={(e) => setNewCandy({...newCandy, name: e.target.value})}
                   placeholder="Enter candy name"
-                  className="border-2 border-yellow-400"
+                  className="border-yellow-300"
                 />
               </div>
               <div>
-                <Label htmlFor="candy-price" className="text-red-700">Price ($)</Label>
+                <Label htmlFor="candy-price">Price ($)</Label>
                 <Input
                   id="candy-price"
                   type="number"
@@ -363,23 +343,33 @@ export default function TwistedTreatsCandyShop() {
                   value={newCandy.price}
                   onChange={(e) => setNewCandy({...newCandy, price: parseFloat(e.target.value) || 0})}
                   placeholder="Enter price"
-                  className="border-2 border-yellow-400"
+                  className="border-yellow-300"
                 />
               </div>
               <div className="md:col-span-2">
-                <Label htmlFor="candy-description" className="text-red-700">Description</Label>
+                <Label htmlFor="candy-image">Emoji/Image (e.g., 🍭, 🍫)</Label>
+                <Input
+                  id="candy-image"
+                  value={imageInput}
+                  onChange={handleImageChange}
+                  placeholder="Enter emoji or image URL"
+                  className="border-yellow-300"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="candy-description">Description</Label>
                 <Textarea
                   id="candy-description"
                   value={newCandy.description}
                   onChange={(e) => setNewCandy({...newCandy, description: e.target.value})}
                   placeholder="Enter candy description"
-                  className="border-2 border-yellow-400"
+                  className="border-yellow-300"
                 />
               </div>
               <div className="md:col-span-2">
                 <Button 
                   onClick={handleAddCandy}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold"
+                  className="w-full bg-green-500 hover:bg-green-600 text-white"
                 >
                   Add Candy
                 </Button>
@@ -391,52 +381,24 @@ export default function TwistedTreatsCandyShop() {
 
       {/* Staff Mode - Edit Candy Form */}
       {isStaffMode && editingCandy && (
-        <Card className="max-w-2xl mx-auto mb-8 border-4 border-yellow-300 bg-white">
+        <Card className="max-w-2xl mx-auto mb-8 border-2 border-yellow-300 bg-white">
           <CardHeader>
-            <CardTitle className="text-center text-red-600">Edit Candy</CardTitle>
+            <CardTitle className="text-center">Edit Candy</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="edit-candy-image" className="text-red-700">Candy Image</Label>
-                <div className="flex items-center gap-4">
-                  <div className="border-2 border-dashed border-yellow-400 rounded-lg w-32 h-32 flex items-center justify-center">
-                    {editingCandy.image ? (
-                      <img src={editingCandy.image} alt="Preview" className="w-full h-full object-cover rounded-lg" />
-                    ) : (
-                      <Upload className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div>
-                    <Input
-                      id="edit-candy-image"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e, true)}
-                      className="hidden"
-                    />
-                    <Button 
-                      onClick={() => document.getElementById('edit-candy-image')?.click()}
-                      className="bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Change Image
-                    </Button>
-                  </div>
-                </div>
-              </div>
               <div>
-                <Label htmlFor="edit-candy-name" className="text-red-700">Candy Name</Label>
+                <Label htmlFor="edit-candy-name">Candy Name</Label>
                 <Input
                   id="edit-candy-name"
                   value={editingCandy.name}
                   onChange={(e) => setEditingCandy({...editingCandy, name: e.target.value})}
                   placeholder="Enter candy name"
-                  className="border-2 border-yellow-400"
+                  className="border-yellow-300"
                 />
               </div>
               <div>
-                <Label htmlFor="edit-candy-price" className="text-red-700">Price ($)</Label>
+                <Label htmlFor="edit-candy-price">Price ($)</Label>
                 <Input
                   id="edit-candy-price"
                   type="number"
@@ -445,30 +407,40 @@ export default function TwistedTreatsCandyShop() {
                   value={editingCandy.price}
                   onChange={(e) => setEditingCandy({...editingCandy, price: parseFloat(e.target.value) || 0})}
                   placeholder="Enter price"
-                  className="border-2 border-yellow-400"
+                  className="border-yellow-300"
                 />
               </div>
               <div className="md:col-span-2">
-                <Label htmlFor="edit-candy-description" className="text-red-700">Description</Label>
+                <Label htmlFor="edit-candy-image">Emoji/Image (e.g., 🍭, 🍫)</Label>
+                <Input
+                  id="edit-candy-image"
+                  value={imageInput}
+                  onChange={handleImageChange}
+                  placeholder="Enter emoji or image URL"
+                  className="border-yellow-300"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="edit-candy-description">Description</Label>
                 <Textarea
                   id="edit-candy-description"
                   value={editingCandy.description}
                   onChange={(e) => setEditingCandy({...editingCandy, description: e.target.value})}
                   placeholder="Enter candy description"
-                  className="border-2 border-yellow-400"
+                  className="border-yellow-300"
                 />
               </div>
               <div className="md:col-span-2 flex gap-2">
                 <Button 
                   onClick={handleUpdateCandy}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold"
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
                 >
                   Update Candy
                 </Button>
                 <Button 
                   onClick={() => setEditingCandy(null)}
                   variant="outline"
-                  className="border-2 border-red-500 text-red-500 hover:bg-red-50"
+                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
                 >
                   Cancel
                 </Button>
@@ -485,7 +457,7 @@ export default function TwistedTreatsCandyShop() {
           placeholder="Search candies..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="border-4 border-yellow-300 bg-white text-red-700 placeholder:text-red-400 font-medium"
+          className="border-2 border-yellow-300 bg-white"
         />
       </div>
 
@@ -494,19 +466,21 @@ export default function TwistedTreatsCandyShop() {
         {filteredCandyItems.map((candy) => (
           <Card 
             key={candy.id} 
-            className="border-4 border-yellow-300 bg-white hover:shadow-xl transition-all"
+            className="border-2 border-yellow-300 hover:border-white transition-all bg-white"
           >
-            {renderCandyImage(candy.image)}
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
-                <CardTitle className="text-xl text-red-700">{candy.name}</CardTitle>
+                <CardTitle className="text-xl">{candy.name}</CardTitle>
                 {isStaffMode && (
                   <div className="flex gap-1">
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      onClick={() => setEditingCandy(candy)}
-                      className="border-yellow-400 text-yellow-600 hover:bg-yellow-100"
+                      onClick={() => {
+                        setEditingCandy(candy);
+                        setImageInput(candy.image);
+                      }}
+                      className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -514,7 +488,6 @@ export default function TwistedTreatsCandyShop() {
                       size="sm" 
                       variant="destructive" 
                       onClick={() => handleDeleteCandy(candy.id)}
-                      className="bg-red-500 hover:bg-red-600"
                     >
                       <Trash className="h-4 w-4" />
                     </Button>
@@ -523,11 +496,18 @@ export default function TwistedTreatsCandyShop() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-3">{candy.description}</p>
-              <p className="text-lg font-bold text-red-600 mb-4">${candy.price.toFixed(2)}</p>
+              <div className="flex items-center gap-4">
+                <div className="bg-gray-100 border-2 border-dashed border-yellow-300 rounded-xl w-16 h-16 flex items-center justify-center text-3xl">
+                  {candy.image}
+                </div>
+                <div>
+                  <p className="text-gray-600 mb-2">{candy.description}</p>
+                  <p className="text-lg font-bold text-red-600">${candy.price.toFixed(2)}</p>
+                </div>
+              </div>
               <Button 
                 onClick={() => addToCart(candy)}
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold"
+                className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white"
               >
                 Add to Cart
               </Button>
@@ -538,15 +518,15 @@ export default function TwistedTreatsCandyShop() {
 
       {/* Shopping Cart Modal */}
       {showCart && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto border-4 border-yellow-400 bg-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto border-4 border-yellow-300 bg-white">
             <CardHeader className="flex flex-row justify-between items-center">
-              <CardTitle className="text-2xl text-red-600">Your Shopping Cart</CardTitle>
+              <CardTitle className="text-2xl">Your Shopping Cart</CardTitle>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setShowCart(false)}
-                className="text-red-500 hover:text-red-700"
+                className="text-gray-500 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -560,14 +540,14 @@ export default function TwistedTreatsCandyShop() {
                     {cart.map((item) => (
                       <div 
                         key={item.candy.id} 
-                        className="flex items-center justify-between p-4 border-2 border-yellow-300 rounded-lg"
+                        className="flex items-center justify-between p-4 border rounded-lg border-yellow-200"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-16 h-16">
-                            {renderCandyImage(item.candy.image)}
+                          <div className="bg-gray-100 border-2 border-dashed border-yellow-300 rounded-xl w-12 h-12 flex items-center justify-center text-2xl">
+                            {item.candy.image}
                           </div>
                           <div>
-                            <h3 className="font-semibold text-red-700">{item.candy.name}</h3>
+                            <h3 className="font-semibold">{item.candy.name}</h3>
                             <p className="text-sm text-gray-600">${item.candy.price.toFixed(2)} each</p>
                           </div>
                         </div>
@@ -576,16 +556,16 @@ export default function TwistedTreatsCandyShop() {
                             size="sm" 
                             variant="outline" 
                             onClick={() => updateQuantity(item.candy.id, item.quantity - 1)}
-                            className="border-yellow-400 text-yellow-600 hover:bg-yellow-100"
+                            className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
-                          <span className="w-8 text-center font-bold">{item.quantity}</span>
+                          <span className="w-8 text-center">{item.quantity}</span>
                           <Button 
                             size="sm" 
                             variant="outline" 
                             onClick={() => updateQuantity(item.candy.id, item.quantity + 1)}
-                            className="border-yellow-400 text-yellow-600 hover:bg-yellow-100"
+                            className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -601,36 +581,36 @@ export default function TwistedTreatsCandyShop() {
                     ))}
                   </div>
                   
-                  <div className="border-t-2 border-yellow-300 pt-4">
-                    <div className="flex justify-between text-lg font-bold mb-4 text-red-700">
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between text-lg font-bold mb-4">
                       <span>Total:</span>
                       <span>${cartTotal.toFixed(2)}</span>
                     </div>
                     
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="customer-name" className="text-red-700">Your Name</Label>
+                        <Label htmlFor="customer-name">Your Name</Label>
                         <Input
                           id="customer-name"
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
                           placeholder="Enter your name"
-                          className="border-2 border-yellow-400"
+                          className="border-yellow-300"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="pickup-location" className="text-red-700">Pickup Location</Label>
+                        <Label htmlFor="pickup-location">Pickup Location</Label>
                         <Input
                           id="pickup-location"
                           value={pickupLocation}
                           onChange={(e) => setPickupLocation(e.target.value)}
                           placeholder="Enter pickup location"
-                          className="border-2 border-yellow-400"
+                          className="border-yellow-300"
                         />
                       </div>
                       <Button 
                         onClick={handleCheckout}
-                        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold"
+                        className="w-full bg-green-500 hover:bg-green-600 text-white"
                       >
                         Place Order
                       </Button>
@@ -649,14 +629,14 @@ export default function TwistedTreatsCandyShop() {
           <h2 className="text-2xl font-bold text-center mb-6 text-white drop-shadow">Order Management</h2>
           
           {orders.length === 0 ? (
-            <p className="text-center py-8 text-yellow-200">No orders yet</p>
+            <p className="text-center py-8 text-yellow-100">No orders yet</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {orders.map((order) => (
-                <Card key={order.id} className="border-4 border-yellow-300 bg-white">
+                <Card key={order.id} className="border-2 border-yellow-300 bg-white">
                   <CardHeader>
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg text-red-600">Order #{order.id.slice(-4)}</CardTitle>
+                      <CardTitle className="text-lg">Order #{order.id.slice(-4)}</CardTitle>
                       <Button 
                         size="sm" 
                         variant="destructive" 
@@ -666,13 +646,13 @@ export default function TwistedTreatsCandyShop() {
                       </Button>
                     </div>
                     <p className="text-sm text-gray-600">
-                      {order.timestamp.toLocaleString()}
+                      {new Date(order.timestamp).toLocaleString()}
                     </p>
                   </CardHeader>
                   <CardContent>
                     <div className="mb-4">
-                      <p className="font-semibold text-red-700">Customer: {order.customerName}</p>
-                      <p className="text-sm text-gray-600">Pickup: {order.pickupLocation}</p>
+                      <p className="font-semibold">Customer: {order.customerName}</p>
+                      <p className="text-sm">Pickup: {order.pickupLocation}</p>
                     </div>
                     
                     <div className="space-y-2 mb-4">
@@ -684,7 +664,7 @@ export default function TwistedTreatsCandyShop() {
                       ))}
                     </div>
                     
-                    <div className="flex justify-between font-bold border-t-2 border-yellow-300 pt-2 text-red-700">
+                    <div className="flex justify-between font-bold border-t pt-2">
                       <span>Total:</span>
                       <span>${order.total.toFixed(2)}</span>
                     </div>
@@ -697,12 +677,12 @@ export default function TwistedTreatsCandyShop() {
       )}
 
       {/* Footer with candy border */}
-      <footer className="mt-12 pt-6 border-t-4 border-dashed border-yellow-300 text-center">
+      <footer className="mt-12 pt-6 border-t-4 border-dashed border-white text-center">
         <div className="flex justify-center text-4xl mb-2">
           🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
         </div>
-        <p className="text-yellow-200 font-medium">© {new Date().getFullYear()} Twisted Treats Candy Shop</p>
-        <p className="text-sm text-yellow-100 mt-2">Sweetness delivered with a twist!</p>
+        <p className="text-yellow-100 font-medium">© {new Date().getFullYear()} Twisted Treats Candy Shop</p>
+        <p className="text-sm text-yellow-200 mt-2">Sweetness delivered with a twist!</p>
       </footer>
     </div>
   );
