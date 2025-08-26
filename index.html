@@ -1,652 +1,179 @@
-import { useState, useEffect } from 'react';
-import { Button } from "/components/ui/button";
-import { Input } from "/components/ui/input";
-import { Label } from "/components/ui/label";
-import { Textarea } from "/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card";
-import { Plus, Trash, Edit, ShoppingCart, X, Check } from "lucide-react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twisted Treats 🍭</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+    h1, h2 { font-family: 'Chewy', cursive; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-yellow-100 to-red-100 p-6">
 
-// Types
-type CandyItem = {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  image?: string;
-};
+  <!-- Header -->
+  <h1 class="text-5xl text-center text-red-600 drop-shadow-md mb-6">🍭 Twisted Treats 🍭</h1>
 
-type CartItem = {
-  candy: CandyItem;
-  quantity: number;
-};
+  <!-- Staff Login -->
+  <div id="staffLogin" class="flex justify-center mb-4">
+    <input id="staffPassword" type="password" placeholder="Staff Password" class="border rounded-lg px-3 py-1" />
+    <button onclick="staffLogin()" class="ml-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Login</button>
+  </div>
 
-type Order = {
-  id: string;
-  customerName: string;
-  pickupLocation: string;
-  items: CartItem[];
-  total: number;
-  timestamp: Date;
-};
+  <!-- Search -->
+  <div class="flex justify-center mb-6">
+    <input id="searchInput" type="text" placeholder="Search candies..." oninput="renderShop()" class="w-1/2 px-3 py-2 border-2 border-red-400 rounded-lg" />
+  </div>
 
-// Initial candy data
-const initialCandyItems: CandyItem[] = [
-  { id: '1', name: 'Gummy Bears', price: 3.99, description: 'Assorted fruit-flavored gummy bears' },
-  { id: '2', name: 'Chocolate Bar', price: 2.50, description: 'Rich milk chocolate bar' },
-  { id: '3', name: 'Lollipop', price: 1.25, description: 'Classic swirl lollipop' },
-  { id: '4', name: 'Candy Cane', price: 1.75, description: 'Peppermint candy cane' },
-  { id: '5', name: 'Jelly Beans', price: 4.25, description: 'Rainbow jelly beans' },
-  { id: '6', name: 'Sour Patch Kids', price: 3.50, description: 'Sour then sweet candy' },
-];
+  <!-- Candy Grid -->
+  <div id="shop" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 
-export default function CandyShop() {
-  // State management
-  const [candyItems, setCandyItems] = useState<CandyItem[]>(initialCandyItems);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isStaffMode, setIsStaffMode] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [showCart, setShowCart] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [pickupLocation, setPickupLocation] = useState('');
-  const [editingItem, setEditingItem] = useState<CandyItem | null>(null);
-  const [newItem, setNewItem] = useState<Omit<CandyItem, 'id'>>({ name: '', price: 0, description: '' });
+  <!-- Floating Cart Button -->
+  <button id="cartButton" onclick="openCart()" class="hidden fixed bottom-6 right-6 bg-red-500 text-white p-4 rounded-full shadow-xl hover:bg-red-600 flex items-center">
+    🛒 <span id="cartCount" class="ml-2 font-bold">0</span>
+  </button>
 
-  // Filter items based on search term
-  const filteredItems = candyItems.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Calculate cart total
-  const cartTotal = cart.reduce((total, item) => total + (item.candy.price * item.quantity), 0);
-
-  // Calculate cart item count
-  const cartItemCount = cart.reduce((count, item) => count + item.quantity, 0);
-
-  // Handle staff login
-  const handleLogin = () => {
-    if (password === 'otter123') {
-      setIsStaffMode(true);
-      setShowLogin(false);
-      setPassword('');
-      setLoginError('');
-    } else {
-      setLoginError('Incorrect password');
-    }
-  };
-
-  // Handle logout
-  const handleLogout = () => {
-    setIsStaffMode(false);
-    setEditingItem(null);
-  };
-
-  // Add item to cart
-  const addToCart = (candy: CandyItem) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.candy.id === candy.id);
-      if (existingItem) {
-        return prevCart.map(item => 
-          item.candy.id === candy.id 
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
-        );
-      } else {
-        return [...prevCart, { candy, quantity: 1 }];
-      }
-    });
-  };
-
-  // Remove item from cart
-  const removeFromCart = (id: string) => {
-    setCart(prevCart => prevCart.filter(item => item.candy.id !== id));
-  };
-
-  // Update item quantity in cart
-  const updateQuantity = (id: string, quantity: number) => {
-    if (quantity < 1) return;
-    setCart(prevCart => 
-      prevCart.map(item => 
-        item.candy.id === id ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  // Handle checkout
-  const handleCheckout = () => {
-    if (!customerName || !pickupLocation) return;
-    
-    const newOrder: Order = {
-      id: Date.now().toString(),
-      customerName,
-      pickupLocation,
-      items: [...cart],
-      total: cartTotal,
-      timestamp: new Date(),
-    };
-    
-    setOrders(prev => [...prev, newOrder]);
-    setCart([]);
-    setShowCheckout(false);
-    setShowCart(false);
-    setCustomerName('');
-    setPickupLocation('');
-  };
-
-  // Add new candy item
-  const addCandyItem = () => {
-    if (!newItem.name || newItem.price <= 0) return;
-    
-    const candyItem: CandyItem = {
-      ...newItem,
-      id: Date.now().toString(),
-    };
-    
-    setCandyItems(prev => [...prev, candyItem]);
-    setNewItem({ name: '', price: 0, description: '' });
-  };
-
-  // Update candy item
-  const updateCandyItem = () => {
-    if (!editingItem || !editingItem.name || editingItem.price <= 0) return;
-    
-    setCandyItems(prev => 
-      prev.map(item => 
-        item.id === editingItem.id ? editingItem : item
-      )
-    );
-    
-    setEditingItem(null);
-  };
-
-  // Delete candy item
-  const deleteCandyItem = (id: string) => {
-    setCandyItems(prev => prev.filter(item => item.id !== id));
-    // Remove from cart if present
-    setCart(prev => prev.filter(item => item.candy.id !== id));
-  };
-
-  // Delete order
-  const deleteOrder = (id: string) => {
-    setOrders(prev => prev.filter(order => order.id !== id));
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-yellow-50 to-red-50 p-4 relative">
-      {/* Decorative border with lollipops */}
-      <div className="absolute top-0 left-0 right-0 h-8 flex justify-center items-center text-2xl">
-        {'🍭'.repeat(20)}
+  <!-- Cart Modal -->
+  <div id="cartModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white p-6 rounded-xl w-96">
+      <h2 class="text-2xl text-red-600 mb-4">Your Cart</h2>
+      <div id="cartItems"></div>
+      <input id="checkoutName" type="text" placeholder="Your Name" class="w-full mb-2 border rounded px-2 py-1" />
+      <input id="checkoutLocation" type="text" placeholder="Pickup Location" class="w-full mb-2 border rounded px-2 py-1" />
+      <div class="flex justify-between">
+        <button onclick="checkout()" class="bg-yellow-400 hover:bg-yellow-500 px-3 py-1 rounded">Checkout</button>
+        <button onclick="closeCart()" class="bg-gray-300 px-3 py-1 rounded">Cancel</button>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 h-8 flex justify-center items-center text-2xl">
-        {'🍭'.repeat(20)}
-      </div>
-      <div className="absolute left-0 top-8 bottom-8 w-8 flex flex-col justify-center items-center text-2xl">
-        {'🍭'.repeat(15)}
-      </div>
-      <div className="absolute right-0 top-8 bottom-8 w-8 flex flex-col justify-center items-center text-2xl">
-        {'🍭'.repeat(15)}
-      </div>
-
-      {/* Main content with padding for border */}
-      <div className="max-w-6xl mx-auto pt-12 pb-16 px-8">
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-4xl font-bold text-red-600">🍭 Sweet Treats Candy Shop 🍭</h1>
-            <p className="text-gray-600 mt-2">Delicious candies for everyone!</p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {/* Staff Login/Logout */}
-            {isStaffMode ? (
-              <Button 
-                onClick={handleLogout}
-                variant="outline"
-                className="bg-red-100 hover:bg-red-200 border-red-300"
-              >
-                Logout
-              </Button>
-            ) : (
-              <Button 
-                onClick={() => setShowLogin(true)}
-                variant="outline"
-                className="bg-yellow-100 hover:bg-yellow-200 border-yellow-300"
-              >
-                Staff Login
-              </Button>
-            )}
-            
-            {/* Cart Icon */}
-            <Button 
-              onClick={() => setShowCart(true)}
-              variant="outline"
-              className="relative bg-pink-100 hover:bg-pink-200 border-pink-300"
-            >
-              <ShoppingCart className="mr-2" />
-              Cart
-              {cartItemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                  {cartItemCount}
-                </span>
-              )}
-            </Button>
-          </div>
-        </header>
-
-        {/* Search Bar */}
-        <div className="mb-8">
-          <div className="relative max-w-md mx-auto">
-            <Input
-              type="text"
-              placeholder="Search candies..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 py-6 text-lg border-2 border-yellow-300 rounded-full focus:ring-2 focus:ring-yellow-500"
-            />
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              🔍
-            </div>
-          </div>
-        </div>
-
-        {/* Staff Mode Controls */}
-        {isStaffMode && (
-          <Card className="mb-8 bg-yellow-50 border-2 border-yellow-200">
-            <CardHeader>
-              <CardTitle className="text-yellow-800">Staff Controls</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Add New Item Form */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Add New Candy</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="name">Name</Label>
-                      <Input
-                        id="name"
-                        value={newItem.name}
-                        onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                        placeholder="Candy name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="price">Price ($)</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={newItem.price || ''}
-                        onChange={(e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={newItem.description}
-                        onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                        placeholder="Candy description"
-                      />
-                    </div>
-                    <Button 
-                      onClick={addCandyItem}
-                      className="w-full bg-green-500 hover:bg-green-600"
-                    >
-                      <Plus className="mr-2" /> Add Candy
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Edit Item Form */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Edit Candy</h3>
-                  {editingItem ? (
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="edit-name">Name</Label>
-                        <Input
-                          id="edit-name"
-                          value={editingItem.name}
-                          onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="edit-price">Price ($)</Label>
-                        <Input
-                          id="edit-price"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={editingItem.price || ''}
-                          onChange={(e) => setEditingItem({...editingItem, price: parseFloat(e.target.value) || 0})}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="edit-description">Description</Label>
-                        <Textarea
-                          id="edit-description"
-                          value={editingItem.description}
-                          onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          onClick={updateCandyItem}
-                          className="flex-1 bg-blue-500 hover:bg-blue-600"
-                        >
-                          <Check className="mr-2" /> Save
-                        </Button>
-                        <Button 
-                          onClick={() => setEditingItem(null)}
-                          variant="outline"
-                        >
-                          <X className="mr-2" /> Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">Select a candy to edit</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Candy Items Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {filteredItems.map((item) => (
-            <Card key={item.id} className="overflow-hidden border-2 border-yellow-200 hover:shadow-lg transition-shadow">
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center">
-                <span className="text-4xl">🍭</span>
-              </div>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800">{item.name}</h3>
-                    <p className="text-gray-600 mt-1">{item.description}</p>
-                  </div>
-                  <span className="text-lg font-bold text-red-600">${item.price.toFixed(2)}</span>
-                </div>
-                
-                <div className="flex justify-between mt-4">
-                  <Button 
-                    onClick={() => addToCart(item)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                  >
-                    Add to Cart
-                  </Button>
-                  
-                  {isStaffMode && (
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={() => setEditingItem(item)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        onClick={() => deleteCandyItem(item.id)}
-                        variant="destructive"
-                        size="sm"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Orders Section (Staff Only) */}
-        {isStaffMode && (
-          <Card className="bg-red-50 border-2 border-red-200">
-            <CardHeader>
-              <CardTitle className="text-red-800">Orders</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {orders.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No orders yet</p>
-              ) : (
-                <div className="space-y-4">
-                  {orders.map(order => (
-                    <div key={order.id} className="border border-gray-200 rounded-lg p-4 bg-white">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-bold text-lg">{order.customerName}</h3>
-                          <p className="text-gray-600">Pickup: {order.pickupLocation}</p>
-                          <p className="text-sm text-gray-500">
-                            {order.timestamp.toLocaleDateString()} at {order.timestamp.toLocaleTimeString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold">${order.total.toFixed(2)}</p>
-                          <Button 
-                            onClick={() => deleteOrder(order.id)}
-                            variant="destructive"
-                            size="sm"
-                            className="mt-2"
-                          >
-                            <Trash className="h-4 w-4 mr-1" /> Delete
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-3">
-                        <h4 className="font-semibold">Items:</h4>
-                        <ul className="list-disc pl-5 mt-1">
-                          {order.items.map(item => (
-                            <li key={item.candy.id}>
-                              {item.quantity} x {item.candy.name} (${(item.candy.price * item.quantity).toFixed(2)})
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Staff Login Modal */}
-      {showLogin && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Staff Login</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="mt-1"
-                  />
-                  {loginError && <p className="text-red-500 text-sm mt-1">{loginError}</p>}
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={handleLogin}
-                    className="flex-1"
-                  >
-                    Login
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      setShowLogin(false);
-                      setPassword('');
-                      setLoginError('');
-                    }}
-                    variant="outline"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Cart Modal */}
-      {showCart && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto">
-            <CardHeader className="flex flex-row justify-between items-center">
-              <CardTitle>Your Cart</CardTitle>
-              <Button 
-                onClick={() => setShowCart(false)}
-                variant="ghost"
-                size="sm"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {cart.length === 0 ? (
-                <div className="text-center py-8">
-                  <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-lg font-medium">Your cart is empty</h3>
-                  <p className="mt-1 text-gray-500">Add some delicious candies!</p>
-                  <Button 
-                    onClick={() => setShowCart(false)}
-                    className="mt-4"
-                  >
-                    Continue Shopping
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-4">
-                    {cart.map(item => (
-                      <div key={item.candy.id} className="flex items-center justify-between border-b pb-4">
-                        <div>
-                          <h3 className="font-medium">{item.candy.name}</h3>
-                          <p className="text-gray-600">${item.candy.price.toFixed(2)} each</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            onClick={() => updateQuantity(item.candy.id, item.quantity - 1)}
-                            size="sm"
-                            variant="outline"
-                          >
-                            -
-                          </Button>
-                          <span className="w-8 text-center">{item.quantity}</span>
-                          <Button 
-                            onClick={() => updateQuantity(item.candy.id, item.quantity + 1)}
-                            size="sm"
-                            variant="outline"
-                          >
-                            +
-                          </Button>
-                          <Button 
-                            onClick={() => removeFromCart(item.candy.id)}
-                            variant="destructive"
-                            size="sm"
-                            className="ml-2"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-6 pt-4 border-t">
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Total:</span>
-                      <span>${cartTotal.toFixed(2)}</span>
-                    </div>
-                    <Button 
-                      onClick={() => {
-                        setShowCart(false);
-                        setShowCheckout(true);
-                      }}
-                      className="w-full mt-4 bg-green-600 hover:bg-green-700"
-                    >
-                      Proceed to Checkout
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Checkout Modal */}
-      {showCheckout && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Checkout</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="customerName">Your Name</Label>
-                  <Input
-                    id="customerName"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Enter your name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="pickupLocation">Pickup Location</Label>
-                  <Input
-                    id="pickupLocation"
-                    value={pickupLocation}
-                    onChange={(e) => setPickupLocation(e.target.value)}
-                    placeholder="Where should we deliver?"
-                  />
-                </div>
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between font-bold">
-                    <span>Total:</span>
-                    <span>${cartTotal.toFixed(2)}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={handleCheckout}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    disabled={!customerName || !pickupLocation}
-                  >
-                    Place Order
-                  </Button>
-                  <Button 
-                    onClick={() => setShowCheckout(false)}
-                    variant="outline"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
-  );
-}
+  </div>
+
+  <!-- Staff Orders -->
+  <div id="staffOrders" class="hidden mt-12">
+    <h2 class="text-3xl text-center text-yellow-600 mb-4">Staff Orders</h2>
+    <div id="ordersList"></div>
+  </div>
+
+  <script>
+    // Data
+    let candies = JSON.parse(localStorage.getItem("candies")) || [
+      { id: 1, name: "Gummy Bears", price: 3, description: "Fruity chewy fun", image: "https://i.imgur.com/OdL0XPt.png" },
+      { id: 2, name: "Lollipops", price: 2, description: "Colorful sweet swirl", image: "https://i.imgur.com/iz9xCsz.png" },
+      { id: 3, name: "Chocolate Bar", price: 4, description: "Rich and creamy", image: "https://i.imgur.com/Qck0Vtq.png" }
+    ];
+    let cart = [];
+    let orders = JSON.parse(localStorage.getItem("orders")) || [];
+    let isStaff = false;
+
+    // Save
+    function saveData() {
+      localStorage.setItem("candies", JSON.stringify(candies));
+      localStorage.setItem("orders", JSON.stringify(orders));
+    }
+
+    // Render Shop
+    function renderShop() {
+      const shop = document.getElementById("shop");
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      shop.innerHTML = "";
+      candies.filter(c => c.name.toLowerCase().includes(search)).forEach(item => {
+        shop.innerHTML += `
+          <div class="rounded-2xl shadow-md border-2 border-yellow-400 p-3 bg-white hover:scale-105 transition">
+            <img src="${item.image}" alt="${item.name}" class="w-full h-40 object-contain mb-2" />
+            <h2 class="text-xl text-red-700">${item.name}</h2>
+            <p class="text-sm text-gray-700">${item.description}</p>
+            <p class="font-bold text-red-600">$${item.price}</p>
+            <button onclick="addToCart(${item.id})" class="mt-2 bg-yellow-400 hover:bg-yellow-500 px-3 py-1 rounded">Add to Cart</button>
+          </div>`;
+      });
+    }
+
+    // Cart
+    function addToCart(id) {
+      const item = candies.find(c => c.id === id);
+      const existing = cart.find(c => c.item.id === id);
+      if (existing) existing.quantity++;
+      else cart.push({ item, quantity: 1 });
+      updateCartButton();
+    }
+    function updateCartButton() {
+      const btn = document.getElementById("cartButton");
+      const count = document.getElementById("cartCount");
+      const total = cart.reduce((t, i) => t + i.quantity, 0);
+      if (total > 0) { btn.classList.remove("hidden"); count.textContent = total; }
+      else btn.classList.add("hidden");
+    }
+    function openCart() {
+      document.getElementById("cartModal").classList.remove("hidden");
+      renderCart();
+    }
+    function closeCart() {
+      document.getElementById("cartModal").classList.add("hidden");
+    }
+    function renderCart() {
+      const div = document.getElementById("cartItems");
+      div.innerHTML = "";
+      cart.forEach(c => {
+        div.innerHTML += `
+          <div class="flex justify-between items-center mb-2">
+            <span>${c.item.name} x${c.quantity}</span>
+            <button onclick="removeFromCart(${c.item.id})" class="bg-red-500 text-white px-2 py-1 rounded">Remove</button>
+          </div>`;
+      });
+    }
+    function removeFromCart(id) {
+      cart = cart.filter(c => c.item.id !== id);
+      updateCartButton();
+      renderCart();
+    }
+
+    // Checkout
+    function checkout() {
+      const name = document.getElementById("checkoutName").value;
+      const location = document.getElementById("checkoutLocation").value;
+      if (!name || !location) return alert("Fill in details!");
+      orders.push({ id: Date.now(), name, location, items: cart });
+      cart = [];
+      saveData();
+      updateCartButton();
+      closeCart();
+      renderOrders();
+    }
+
+    // Staff
+    function staffLogin() {
+      const pass = document.getElementById("staffPassword").value;
+      if (pass === "otter123") {
+        isStaff = true;
+        document.getElementById("staffLogin").classList.add("hidden");
+        document.getElementById("staffOrders").classList.remove("hidden");
+        renderOrders();
+      } else alert("Wrong password!");
+    }
+    function renderOrders() {
+      const div = document.getElementById("ordersList");
+      div.innerHTML = "";
+      orders.forEach(o => {
+        div.innerHTML += `
+          <div class="bg-white rounded-lg p-4 mb-3 shadow">
+            <p><b>${o.name}</b> – ${o.location}</p>
+            <ul class="list-disc list-inside">${o.items.map(it => `<li>${it.item.name} x${it.quantity}</li>`).join("")}</ul>
+            <button onclick="deleteOrder(${o.id})" class="bg-red-500 text-white px-3 py-1 mt-2 rounded">Delete</button>
+          </div>`;
+      });
+    }
+    function deleteOrder(id) {
+      orders = orders.filter(o => o.id !== id);
+      saveData();
+      renderOrders();
+    }
+
+    // Init
+    renderShop();
+    updateCartButton();
+  </script>
+</body>
+</html>
