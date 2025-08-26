@@ -1,127 +1,117 @@
-let items = JSON.parse(localStorage.getItem("items")) || [
-  { name: "Lollipop", price: 2, desc: "Sweet and colorful!", img: "https://via.placeholder.com/150" },
-  { name: "Gummy Bears", price: 3, desc: "Chewy goodness", img: "https://via.placeholder.com/150" }
-];
-let cart = [];
-let orders = JSON.parse(localStorage.getItem("orders")) || [];
-let staffMode = false;
-
-// Render Shop
-function renderItems() {
-  const shopDiv = document.getElementById("items");
-  shopDiv.innerHTML = "";
-  const search = document.getElementById("searchBox").value.toLowerCase();
-  items.filter(i => i.name.toLowerCase().includes(search)).forEach((item, index) => {
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `
-      <img src="${item.img}" width="150"><br>
-      <b>${item.name}</b><br>
-      $${item.price}<br>
-      <i>${item.desc}</i><br>
-      <button onclick="addToCart(${index})">Add to Cart</button>
-      ${staffMode ? `<button onclick="removeItem(${index})">Delete</button>` : ""}
-    `;
-    shopDiv.appendChild(div);
-  });
+/* Fonts and Colors */
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #FFD93D, #FF3131);
+  color: #2c2c2c;
+  min-height: 100vh;
+  border: 15px solid transparent;
+  border-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>🍭</text></svg>") 30 repeat;
 }
 
-// Render Cart
-function renderCart() {
-  const cartDiv = document.getElementById("cartItems");
-  cartDiv.innerHTML = "";
-  cart.forEach((item, i) => {
-    const div = document.createElement("div");
-    div.className = "cart-item";
-    div.innerHTML = `${item.name} - $${item.price} 
-      <button onclick="removeFromCart(${i})">Remove</button>`;
-    cartDiv.appendChild(div);
-  });
+h1, h2, h3 {
+  font-family: 'Fredoka One', cursive;
+  color: #b30000;
+  text-align: center;
 }
 
-// Render Orders
-function renderOrders() {
-  const orderDiv = document.getElementById("orders");
-  orderDiv.innerHTML = "";
-  orders.forEach((o, i) => {
-    const div = document.createElement("div");
-    div.className = "order";
-    div.innerHTML = `
-      <b>Order by ${o.name}</b><br>
-      Pickup: ${o.location}<br>
-      Items: ${o.items.map(it => it.name).join(", ")}<br>
-      <button onclick="deleteOrder(${i})">Delete Order</button>
-    `;
-    orderDiv.appendChild(div);
-  });
+header {
+  background: #ff1e56;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-// Cart functions
-function addToCart(i) {
-  cart.push(items[i]);
-  renderCart();
+nav button {
+  background: white;
+  color: #ff1e56;
+  border: none;
+  padding: 10px 15px;
+  margin: 5px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: bold;
+  transition: 0.3s;
 }
-function removeFromCart(i) {
-  cart.splice(i, 1);
-  renderCart();
-}
-
-// Staff
-document.getElementById("staffLoginBtn").onclick = () => {
-  const pass = prompt("Enter staff password:");
-  if (pass === "otter123") {
-    staffMode = true;
-    document.getElementById("staffPanel").style.display = "block";
-    renderItems();
-    renderOrders();
-  } else {
-    alert("Wrong password!");
-  }
-};
-
-function removeItem(i) {
-  items.splice(i, 1);
-  localStorage.setItem("items", JSON.stringify(items));
-  renderItems();
+nav button:hover {
+  background: #ff9a9e;
+  color: white;
 }
 
-document.getElementById("addItemBtn").onclick = () => {
-  const name = document.getElementById("newName").value;
-  const price = parseFloat(document.getElementById("newPrice").value);
-  const desc = document.getElementById("newDesc").value;
-  const img = document.getElementById("newImage").value;
-  items.push({ name, price, desc, img });
-  localStorage.setItem("items", JSON.stringify(items));
-  renderItems();
-};
-
-// Checkout
-document.getElementById("checkoutBtn").onclick = () => {
-  if (cart.length === 0) return alert("Cart is empty!");
-  document.getElementById("checkoutForm").style.display = "block";
-};
-
-document.getElementById("placeOrderBtn").onclick = () => {
-  const name = document.getElementById("customerName").value;
-  const location = document.getElementById("pickupLocation").value;
-  if (!name || !location) return alert("Please fill all fields");
-  orders.push({ name, location, items: [...cart] });
-  localStorage.setItem("orders", JSON.stringify(orders));
-  cart = [];
-  renderCart();
-  document.getElementById("checkoutForm").style.display = "none";
-  alert("Order placed!");
-  if (staffMode) renderOrders();
-};
-
-function deleteOrder(i) {
-  orders.splice(i, 1);
-  localStorage.setItem("orders", JSON.stringify(orders));
-  renderOrders();
+#items, #cartItems, #orders {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
 }
 
-document.getElementById("searchBox").oninput = renderItems;
+.item, .cart-item, .order {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  text-align: center;
+  width: 220px;
+  transition: transform 0.2s;
+}
+.item:hover {
+  transform: scale(1.05);
+}
 
-// Initial render
-renderItems();
-renderCart();
+.item img {
+  border-radius: 10px;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+}
+
+button {
+  background: #ff1e56;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  background: #b30000;
+}
+
+#searchBox {
+  display: block;
+  margin: 10px auto;
+  padding: 10px;
+  width: 60%;
+  border-radius: 6px;
+  border: none;
+  font-size: 16px;
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 20;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+}
+.modal-content {
+  background: white;
+  margin: 10% auto;
+  padding: 20px;
+  width: 300px;
+  border-radius: 12px;
+  text-align: center;
+}
+.close {
+  float: right;
+  font-size: 22px;
+  cursor: pointer;
+}
