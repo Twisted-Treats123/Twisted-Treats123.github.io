@@ -1,230 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Twisted Treats 🍭</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Poppins', sans-serif; }
-    h1, h2 { font-family: 'Chewy', cursive; }
-    .border-candy { border: 8px solid transparent; padding: 10px; background-image: linear-gradient(white, white), repeating-linear-gradient(45deg, transparent, transparent 10px, #facc15 10px, #ef4444 20px); background-origin: border-box; background-clip: content-box, border-box; }
-    .emoji-border { border: 4px dashed #facc15; padding: 5px; text-align:center; font-size: 1.5rem; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="min-h-screen bg-gradient-to-br from-yellow-100 to-red-100 p-6">
+<body>
+  <header>
+    <h1>🍭 Twisted Treats 🍭</h1>
+    <button id="staffLoginBtn">Staff Login</button>
+  </header>
 
-  <!-- Candy Border -->
-  <div class="emoji-border mb-6">🍭 🍭 🍭 🍭 🍭 🍭 🍭 🍭 🍭</div>
+  <main>
+    <section id="shop">
+      <h2>Shop</h2>
+      <input type="text" id="searchBox" placeholder="Search for candy...">
+      <div id="items"></div>
+    </section>
 
-  <!-- Header -->
-  <h1 class="text-5xl text-center text-red-600 drop-shadow-md mb-6">🍭 Twisted Treats 🍭</h1>
-
-  <!-- Staff Login -->
-  <div id="staffLogin" class="flex justify-center mb-4">
-    <input id="staffPassword" type="password" placeholder="Staff Password" class="border rounded-lg px-3 py-1" />
-    <button onclick="staffLogin()" class="ml-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Login</button>
-  </div>
-
-  <!-- Search -->
-  <div class="flex justify-center mb-6">
-    <input id="searchInput" type="text" placeholder="Search candies..." oninput="renderShop()" class="w-1/2 px-3 py-2 border-2 border-red-400 rounded-lg" />
-  </div>
-
-  <!-- Candy Grid -->
-  <div id="shop" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-
-  <!-- Floating Cart Button -->
-  <button id="cartButton" onclick="openCart()" class="hidden fixed bottom-6 right-6 bg-red-500 text-white p-4 rounded-full shadow-xl hover:bg-red-600 flex items-center">
-    🛒 <span id="cartCount" class="ml-2 font-bold">0</span>
-  </button>
-
-  <!-- Cart Modal -->
-  <div id="cartModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-    <div class="bg-white p-6 rounded-xl w-96">
-      <h2 class="text-2xl text-red-600 mb-4">Your Cart</h2>
+    <section id="cart">
+      <h2>Cart</h2>
       <div id="cartItems"></div>
-      <input id="checkoutName" type="text" placeholder="Your Name" class="w-full mb-2 border rounded px-2 py-1" />
-      <input id="checkoutLocation" type="text" placeholder="Pickup Location" class="w-full mb-2 border rounded px-2 py-1" />
-      <div class="flex justify-between">
-        <button onclick="checkout()" class="bg-yellow-400 hover:bg-yellow-500 px-3 py-1 rounded">Checkout</button>
-        <button onclick="closeCart()" class="bg-gray-300 px-3 py-1 rounded">Cancel</button>
+      <button id="checkoutBtn">Checkout</button>
+    </section>
+
+    <section id="checkoutForm" style="display:none;">
+      <h2>Checkout</h2>
+      <input type="text" id="customerName" placeholder="Your Name">
+      <input type="text" id="pickupLocation" placeholder="Pickup Location">
+      <button id="placeOrderBtn">Place Order</button>
+    </section>
+
+    <section id="staffPanel" style="display:none;">
+      <h2>Staff Panel</h2>
+      <div>
+        <h3>Add New Item</h3>
+        <input id="newName" placeholder="Name">
+        <input id="newPrice" placeholder="Price" type="number">
+        <input id="newDesc" placeholder="Description">
+        <input id="newImage" placeholder="Image URL">
+        <button id="addItemBtn">Add Item</button>
       </div>
-    </div>
-  </div>
 
-  <!-- Staff Panel -->
-  <div id="staffPanel" class="hidden mt-12">
-    <h2 class="text-3xl text-center text-yellow-600 mb-4">Staff Mode</h2>
-    
-    <!-- Add Item Form -->
-    <div class="bg-white p-4 rounded-lg shadow mb-6">
-      <h3 class="text-xl mb-2">Add New Candy</h3>
-      <input id="newName" placeholder="Name" class="border px-2 py-1 w-full mb-2"/>
-      <input id="newDesc" placeholder="Description" class="border px-2 py-1 w-full mb-2"/>
-      <input id="newPrice" type="number" placeholder="Price" class="border px-2 py-1 w-full mb-2"/>
-      <input id="newImg" placeholder="Image URL" class="border px-2 py-1 w-full mb-2"/>
-      <button onclick="addCandy()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded">Add Candy</button>
-    </div>
+      <h3>Orders</h3>
+      <div id="orders"></div>
+    </section>
+  </main>
 
-    <!-- Orders -->
-    <h3 class="text-2xl text-center mb-2">Orders</h3>
-    <div id="ordersList"></div>
-  </div>
-
-  <script>
-    // Data
-    let candies = JSON.parse(localStorage.getItem("candies")) || [
-      { id: 1, name: "Gummy Bears", price: 3, description: "Fruity chewy fun", image: "https://i.imgur.com/OdL0XPt.png" },
-      { id: 2, name: "Lollipops", price: 2, description: "Colorful sweet swirl", image: "https://i.imgur.com/iz9xCsz.png" },
-      { id: 3, name: "Chocolate Bar", price: 4, description: "Rich and creamy", image: "https://i.imgur.com/Qck0Vtq.png" }
-    ];
-    let cart = [];
-    let orders = JSON.parse(localStorage.getItem("orders")) || [];
-    let isStaff = false;
-
-    function saveData() {
-      localStorage.setItem("candies", JSON.stringify(candies));
-      localStorage.setItem("orders", JSON.stringify(orders));
-    }
-
-    // Render Shop
-    function renderShop() {
-      const shop = document.getElementById("shop");
-      const search = document.getElementById("searchInput").value.toLowerCase();
-      shop.innerHTML = "";
-      candies.filter(c => c.name.toLowerCase().includes(search)).forEach(item => {
-        shop.innerHTML += `
-          <div class="rounded-2xl shadow-md border-2 border-yellow-400 p-3 bg-white hover:scale-105 transition">
-            <img src="${item.image}" alt="${item.name}" class="w-full h-40 object-contain mb-2" />
-            <h2 class="text-xl text-red-700">${item.name}</h2>
-            <p class="text-sm text-gray-700">${item.description}</p>
-            <p class="font-bold text-red-600">$${item.price}</p>
-            <button onclick="addToCart(${item.id})" class="mt-2 bg-yellow-400 hover:bg-yellow-500 px-3 py-1 rounded">Add to Cart</button>
-            ${isStaff ? `
-              <button onclick="editCandy(${item.id})" class="bg-blue-500 text-white px-2 py-1 rounded mt-1">Edit</button>
-              <button onclick="deleteCandy(${item.id})" class="bg-red-500 text-white px-2 py-1 rounded mt-1">Delete</button>
-            ` : ""}
-          </div>`;
-      });
-    }
-
-    // Cart
-    function addToCart(id) {
-      const item = candies.find(c => c.id === id);
-      const existing = cart.find(c => c.item.id === id);
-      if (existing) existing.quantity++;
-      else cart.push({ item, quantity: 1 });
-      updateCartButton();
-    }
-    function updateCartButton() {
-      const btn = document.getElementById("cartButton");
-      const count = document.getElementById("cartCount");
-      const total = cart.reduce((t, i) => t + i.quantity, 0);
-      if (total > 0) { btn.classList.remove("hidden"); count.textContent = total; }
-      else btn.classList.add("hidden");
-    }
-    function openCart() {
-      document.getElementById("cartModal").classList.remove("hidden");
-      renderCart();
-    }
-    function closeCart() {
-      document.getElementById("cartModal").classList.add("hidden");
-    }
-    function renderCart() {
-      const div = document.getElementById("cartItems");
-      div.innerHTML = "";
-      cart.forEach(c => {
-        div.innerHTML += `
-          <div class="flex justify-between items-center mb-2">
-            <span>${c.item.name} x${c.quantity}</span>
-            <button onclick="removeFromCart(${c.item.id})" class="bg-red-500 text-white px-2 py-1 rounded">Remove</button>
-          </div>`;
-      });
-    }
-    function removeFromCart(id) {
-      cart = cart.filter(c => c.item.id !== id);
-      updateCartButton();
-      renderCart();
-    }
-
-    // Checkout
-    function checkout() {
-      const name = document.getElementById("checkoutName").value;
-      const location = document.getElementById("checkoutLocation").value;
-      if (!name || !location) return alert("Fill in details!");
-      orders.push({ id: Date.now(), name, location, items: cart });
-      cart = [];
-      saveData();
-      updateCartButton();
-      closeCart();
-      renderOrders();
-    }
-
-    // Staff Mode
-    function staffLogin() {
-      const pass = document.getElementById("staffPassword").value;
-      if (pass === "otter123") {
-        isStaff = true;
-        document.getElementById("staffLogin").classList.add("hidden");
-        document.getElementById("staffPanel").classList.remove("hidden");
-        renderShop();
-        renderOrders();
-      } else alert("Wrong password!");
-    }
-
-    // Manage Candy
-    function addCandy() {
-      const name = document.getElementById("newName").value;
-      const desc = document.getElementById("newDesc").value;
-      const price = parseFloat(document.getElementById("newPrice").value);
-      const img = document.getElementById("newImg").value;
-      if (!name || !desc || !price || !img) return alert("Fill all fields!");
-      candies.push({ id: Date.now(), name, description: desc, price, image: img });
-      saveData();
-      renderShop();
-    }
-    function editCandy(id) {
-      const candy = candies.find(c => c.id === id);
-      const name = prompt("Name:", candy.name);
-      const desc = prompt("Description:", candy.description);
-      const price = prompt("Price:", candy.price);
-      const img = prompt("Image URL:", candy.image);
-      if (name && desc && price && img) {
-        candy.name = name; candy.description = desc; candy.price = parseFloat(price); candy.image = img;
-        saveData();
-        renderShop();
-      }
-    }
-    function deleteCandy(id) {
-      candies = candies.filter(c => c.id !== id);
-      saveData();
-      renderShop();
-    }
-
-    // Orders
-    function renderOrders() {
-      const div = document.getElementById("ordersList");
-      div.innerHTML = "";
-      orders.forEach(o => {
-        div.innerHTML += `
-          <div class="bg-white rounded-lg p-4 mb-3 shadow">
-            <p><b>${o.name}</b> – ${o.location}</p>
-            <ul class="list-disc list-inside">${o.items.map(it => `<li>${it.item.name} x${it.quantity}</li>`).join("")}</ul>
-            <button onclick="deleteOrder(${o.id})" class="bg-red-500 text-white px-3 py-1 mt-2 rounded">Delete</button>
-          </div>`;
-      });
-    }
-    function deleteOrder(id) {
-      orders = orders.filter(o => o.id !== id);
-      saveData();
-      renderOrders();
-    }
-
-    // Init
-    renderShop();
-    updateCartButton();
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
