@@ -4,15 +4,15 @@ import { Input } from "/components/ui/input";
 import { Label } from "/components/ui/label";
 import { Textarea } from "/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card";
-import { Plus, Minus, ShoppingCart, Edit, Trash, X, Check, Upload } from "lucide-react";
+import { Plus, Trash, Edit, ShoppingCart, X, Check } from "lucide-react";
 
 // Types
 type CandyItem = {
   id: string;
   name: string;
-  description: string;
   price: number;
-  image: string;
+  description: string;
+  image?: string;
 };
 
 type CartItem = {
@@ -31,80 +31,60 @@ type Order = {
 
 // Initial candy data
 const initialCandyItems: CandyItem[] = [
-  { id: '1', name: 'Gummy Bears', description: 'Assorted fruit-flavored gummy bears', price: 3.99, image: '🍭' },
-  { id: '2', name: 'Chocolate Bar', description: 'Rich milk chocolate bar', price: 2.50, image: '🍫' },
-  { id: '3', name: 'Sour Worms', description: 'Tangy sour gummy worms', price: 4.25, image: '🐛' },
-  { id: '4', name: 'Lollipop Set', description: 'Assorted rainbow lollipops', price: 5.00, image: '🍭' },
-  { id: '5', name: 'Candy Canes', description: 'Peppermint candy canes', price: 3.25, image: '🍬' },
-  { id: '6', name: 'Jelly Beans', description: 'Classic mixed jelly beans', price: 4.75, image: '🫘' },
+  { id: '1', name: 'Gummy Bears', price: 3.99, description: 'Assorted fruit-flavored gummy bears' },
+  { id: '2', name: 'Chocolate Bar', price: 2.50, description: 'Rich milk chocolate bar' },
+  { id: '3', name: 'Lollipop', price: 1.25, description: 'Classic swirl lollipop' },
+  { id: '4', name: 'Candy Cane', price: 1.75, description: 'Peppermint candy cane' },
+  { id: '5', name: 'Jelly Beans', price: 4.25, description: 'Rainbow jelly beans' },
+  { id: '6', name: 'Sour Patch Kids', price: 3.50, description: 'Sour then sweet candy' },
 ];
 
-export default function TwistedTreatsCandyShop() {
+export default function CandyShop() {
   // State management
-  const [candyItems, setCandyItems] = useState<CandyItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedItems = localStorage.getItem('candyItems');
-      return savedItems ? JSON.parse(savedItems) : initialCandyItems;
-    }
-    return initialCandyItems;
-  });
-  
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedCart = localStorage.getItem('cart');
-      return savedCart ? JSON.parse(savedCart) : [];
-    }
-    return [];
-  });
-  
-  const [orders, setOrders] = useState<Order[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedOrders = localStorage.getItem('orders');
-      return savedOrders ? JSON.parse(savedOrders) : [];
-    }
-    return [];
-  });
-  
+  const [candyItems, setCandyItems] = useState<CandyItem[]>(initialCandyItems);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isStaffMode, setIsStaffMode] = useState(false);
-  const [staffPassword, setStaffPassword] = useState('');
-  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [pickupLocation, setPickupLocation] = useState('');
-  const [newCandy, setNewCandy] = useState<Omit<CandyItem, 'id'>>({ 
-    name: '', 
-    description: '', 
-    price: 0,
-    image: '🍭'
-  });
-  const [editingCandy, setEditingCandy] = useState<CandyItem | null>(null);
-  const [imageInput, setImageInput] = useState('');
+  const [editingItem, setEditingItem] = useState<CandyItem | null>(null);
+  const [newItem, setNewItem] = useState<Omit<CandyItem, 'id'>>({ name: '', price: 0, description: '' });
 
-  // Save to localStorage whenever state changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('candyItems', JSON.stringify(candyItems));
-    }
-  }, [candyItems]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cart', JSON.stringify(cart));
-    }
-  }, [cart]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('orders', JSON.stringify(orders));
-    }
-  }, [orders]);
-
-  // Filter candy items based on search term
-  const filteredCandyItems = candyItems.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  // Filter items based on search term
+  const filteredItems = candyItems.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     item.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Calculate cart total
+  const cartTotal = cart.reduce((total, item) => total + (item.candy.price * item.quantity), 0);
+
+  // Calculate cart item count
+  const cartItemCount = cart.reduce((count, item) => count + item.quantity, 0);
+
+  // Handle staff login
+  const handleLogin = () => {
+    if (password === 'otter123') {
+      setIsStaffMode(true);
+      setShowLogin(false);
+      setPassword('');
+      setLoginError('');
+    } else {
+      setLoginError('Incorrect password');
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setIsStaffMode(false);
+    setEditingItem(null);
+  };
 
   // Add item to cart
   const addToCart = (candy: CandyItem) => {
@@ -123,456 +103,467 @@ export default function TwistedTreatsCandyShop() {
   };
 
   // Remove item from cart
-  const removeFromCart = (candyId: string) => {
-    setCart(prevCart => prevCart.filter(item => item.candy.id !== candyId));
+  const removeFromCart = (id: string) => {
+    setCart(prevCart => prevCart.filter(item => item.candy.id !== id));
   };
 
   // Update item quantity in cart
-  const updateQuantity = (candyId: string, quantity: number) => {
+  const updateQuantity = (id: string, quantity: number) => {
     if (quantity < 1) return;
     setCart(prevCart => 
       prevCart.map(item => 
-        item.candy.id === candyId ? { ...item, quantity } : item
+        item.candy.id === id ? { ...item, quantity } : item
       )
     );
   };
 
-  // Calculate cart total
-  const cartTotal = cart.reduce((total, item) => total + (item.candy.price * item.quantity), 0);
-
   // Handle checkout
   const handleCheckout = () => {
-    if (!customerName || !pickupLocation) {
-      alert('Please enter your name and pickup location');
-      return;
-    }
-
+    if (!customerName || !pickupLocation) return;
+    
     const newOrder: Order = {
-      id: `order-${Date.now()}`,
+      id: Date.now().toString(),
       customerName,
       pickupLocation,
       items: [...cart],
       total: cartTotal,
       timestamp: new Date(),
     };
-
+    
     setOrders(prev => [...prev, newOrder]);
     setCart([]);
+    setShowCheckout(false);
+    setShowCart(false);
     setCustomerName('');
     setPickupLocation('');
-    setShowCart(false);
-    alert('Order placed successfully!');
-  };
-
-  // Staff login
-  const handleStaffLogin = () => {
-    if (staffPassword === 'otter123') {
-      setIsStaffMode(true);
-      setShowLoginForm(false);
-      setStaffPassword('');
-    } else {
-      alert('Incorrect password');
-    }
-  };
-
-  // Staff logout
-  const handleStaffLogout = () => {
-    setIsStaffMode(false);
-    setEditingCandy(null);
   };
 
   // Add new candy item
-  const handleAddCandy = () => {
-    if (!newCandy.name || !newCandy.description || newCandy.price <= 0) {
-      alert('Please fill all fields correctly');
-      return;
-    }
-
+  const addCandyItem = () => {
+    if (!newItem.name || newItem.price <= 0) return;
+    
     const candyItem: CandyItem = {
-      ...newCandy,
-      id: `candy-${Date.now()}`,
+      ...newItem,
+      id: Date.now().toString(),
     };
-
+    
     setCandyItems(prev => [...prev, candyItem]);
-    setNewCandy({ name: '', description: '', price: 0, image: '🍭' });
-    setImageInput('');
+    setNewItem({ name: '', price: 0, description: '' });
   };
 
   // Update candy item
-  const handleUpdateCandy = () => {
-    if (!editingCandy) return;
+  const updateCandyItem = () => {
+    if (!editingItem || !editingItem.name || editingItem.price <= 0) return;
     
     setCandyItems(prev => 
       prev.map(item => 
-        item.id === editingCandy.id ? editingCandy : item
+        item.id === editingItem.id ? editingItem : item
       )
     );
     
-    setEditingCandy(null);
-    setImageInput('');
+    setEditingItem(null);
   };
 
   // Delete candy item
-  const handleDeleteCandy = (id: string) => {
+  const deleteCandyItem = (id: string) => {
     setCandyItems(prev => prev.filter(item => item.id !== id));
+    // Remove from cart if present
     setCart(prev => prev.filter(item => item.candy.id !== id));
   };
 
-  // Close order
-  const handleCloseOrder = (id: string) => {
+  // Delete order
+  const deleteOrder = (id: string) => {
     setOrders(prev => prev.filter(order => order.id !== id));
   };
 
-  // Handle image change
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setImageInput(value);
-    
-    if (editingCandy) {
-      setEditingCandy({ ...editingCandy, image: value });
-    } else {
-      setNewCandy({ ...newCandy, image: value });
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-yellow-400 to-red-500 p-4">
-      {/* Header with candy border */}
-      <header className="text-center py-6 mb-6 border-b-4 border-t-4 border-dashed border-white">
-        <div className="flex justify-center text-4xl mb-2">
-          🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
-        </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">Twisted Treats Candy Shop</h1>
-        <p className="text-lg text-yellow-100 mt-2 font-medium">Sweet Delights for Everyone!</p>
-        <div className="flex justify-center text-4xl mt-2">
-          🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
-        </div>
-      </header>
-
-      {/* Staff Login/Logout */}
-      <div className="flex justify-between items-center mb-6">
-        {isStaffMode ? (
-          <Button 
-            onClick={handleStaffLogout}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            Staff Logout
-          </Button>
-        ) : (
-          <Button 
-            onClick={() => setShowLoginForm(true)}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white"
-          >
-            Staff Login
-          </Button>
-        )}
-        
-        <Button 
-          onClick={() => setShowCart(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          Cart ({cart.reduce((total, item) => total + item.quantity, 0)})
-        </Button>
+    <div className="min-h-screen bg-gradient-to-b from-yellow-50 to-red-50 p-4 relative">
+      {/* Decorative border with lollipops */}
+      <div className="absolute top-0 left-0 right-0 h-8 flex justify-center items-center text-2xl">
+        {'🍭'.repeat(20)}
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-8 flex justify-center items-center text-2xl">
+        {'🍭'.repeat(20)}
+      </div>
+      <div className="absolute left-0 top-8 bottom-8 w-8 flex flex-col justify-center items-center text-2xl">
+        {'🍭'.repeat(15)}
+      </div>
+      <div className="absolute right-0 top-8 bottom-8 w-8 flex flex-col justify-center items-center text-2xl">
+        {'🍭'.repeat(15)}
       </div>
 
-      {/* Staff Login Form */}
-      {showLoginForm && (
-        <Card className="max-w-md mx-auto mb-6 border-2 border-yellow-300 bg-white">
-          <CardHeader>
-            <CardTitle className="text-center">Staff Login</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={staffPassword}
-                  onChange={(e) => setStaffPassword(e.target.value)}
-                  placeholder="Enter staff password"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleStaffLogin}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-                >
-                  Login
-                </Button>
-                <Button 
-                  onClick={() => setShowLoginForm(false)}
-                  variant="outline"
-                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                >
-                  Cancel
-                </Button>
-              </div>
+      {/* Main content with padding for border */}
+      <div className="max-w-6xl mx-auto pt-12 pb-16 px-8">
+        {/* Header */}
+        <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-red-600">🍭 Sweet Treats Candy Shop 🍭</h1>
+            <p className="text-gray-600 mt-2">Delicious candies for everyone!</p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Staff Login/Logout */}
+            {isStaffMode ? (
+              <Button 
+                onClick={handleLogout}
+                variant="outline"
+                className="bg-red-100 hover:bg-red-200 border-red-300"
+              >
+                Logout
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => setShowLogin(true)}
+                variant="outline"
+                className="bg-yellow-100 hover:bg-yellow-200 border-yellow-300"
+              >
+                Staff Login
+              </Button>
+            )}
+            
+            {/* Cart Icon */}
+            <Button 
+              onClick={() => setShowCart(true)}
+              variant="outline"
+              className="relative bg-pink-100 hover:bg-pink-200 border-pink-300"
+            >
+              <ShoppingCart className="mr-2" />
+              Cart
+              {cartItemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                  {cartItemCount}
+                </span>
+              )}
+            </Button>
+          </div>
+        </header>
+
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="relative max-w-md mx-auto">
+            <Input
+              type="text"
+              placeholder="Search candies..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 py-6 text-lg border-2 border-yellow-300 rounded-full focus:ring-2 focus:ring-yellow-500"
+            />
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              🔍
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
 
-      {/* Staff Mode - Add Candy Form */}
-      {isStaffMode && !editingCandy && (
-        <Card className="max-w-2xl mx-auto mb-8 border-2 border-yellow-300 bg-white">
-          <CardHeader>
-            <CardTitle className="text-center">Add New Candy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="candy-name">Candy Name</Label>
-                <Input
-                  id="candy-name"
-                  value={newCandy.name}
-                  onChange={(e) => setNewCandy({...newCandy, name: e.target.value})}
-                  placeholder="Enter candy name"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="candy-price">Price ($)</Label>
-                <Input
-                  id="candy-price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={newCandy.price}
-                  onChange={(e) => setNewCandy({...newCandy, price: parseFloat(e.target.value) || 0})}
-                  placeholder="Enter price"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="candy-image">Emoji/Image (e.g., 🍭, 🍫)</Label>
-                <Input
-                  id="candy-image"
-                  value={imageInput}
-                  onChange={handleImageChange}
-                  placeholder="Enter emoji or image URL"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="candy-description">Description</Label>
-                <Textarea
-                  id="candy-description"
-                  value={newCandy.description}
-                  onChange={(e) => setNewCandy({...newCandy, description: e.target.value})}
-                  placeholder="Enter candy description"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Button 
-                  onClick={handleAddCandy}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white"
-                >
-                  Add Candy
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Staff Mode - Edit Candy Form */}
-      {isStaffMode && editingCandy && (
-        <Card className="max-w-2xl mx-auto mb-8 border-2 border-yellow-300 bg-white">
-          <CardHeader>
-            <CardTitle className="text-center">Edit Candy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-candy-name">Candy Name</Label>
-                <Input
-                  id="edit-candy-name"
-                  value={editingCandy.name}
-                  onChange={(e) => setEditingCandy({...editingCandy, name: e.target.value})}
-                  placeholder="Enter candy name"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-candy-price">Price ($)</Label>
-                <Input
-                  id="edit-candy-price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={editingCandy.price}
-                  onChange={(e) => setEditingCandy({...editingCandy, price: parseFloat(e.target.value) || 0})}
-                  placeholder="Enter price"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="edit-candy-image">Emoji/Image (e.g., 🍭, 🍫)</Label>
-                <Input
-                  id="edit-candy-image"
-                  value={imageInput}
-                  onChange={handleImageChange}
-                  placeholder="Enter emoji or image URL"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="edit-candy-description">Description</Label>
-                <Textarea
-                  id="edit-candy-description"
-                  value={editingCandy.description}
-                  onChange={(e) => setEditingCandy({...editingCandy, description: e.target.value})}
-                  placeholder="Enter candy description"
-                  className="border-yellow-300"
-                />
-              </div>
-              <div className="md:col-span-2 flex gap-2">
-                <Button 
-                  onClick={handleUpdateCandy}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-                >
-                  Update Candy
-                </Button>
-                <Button 
-                  onClick={() => setEditingCandy(null)}
-                  variant="outline"
-                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Search Bar */}
-      <div className="max-w-md mx-auto mb-8">
-        <Input
-          type="text"
-          placeholder="Search candies..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border-2 border-yellow-300 bg-white"
-        />
-      </div>
-
-      {/* Candy Items Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        {filteredCandyItems.map((candy) => (
-          <Card 
-            key={candy.id} 
-            className="border-2 border-yellow-300 hover:border-white transition-all bg-white"
-          >
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-xl">{candy.name}</CardTitle>
-                {isStaffMode && (
-                  <div className="flex gap-1">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => {
-                        setEditingCandy(candy);
-                        setImageInput(candy.image);
-                      }}
-                      className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="destructive" 
-                      onClick={() => handleDeleteCandy(candy.id)}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+        {/* Staff Mode Controls */}
+        {isStaffMode && (
+          <Card className="mb-8 bg-yellow-50 border-2 border-yellow-200">
+            <CardHeader>
+              <CardTitle className="text-yellow-800">Staff Controls</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4">
-                <div className="bg-gray-100 border-2 border-dashed border-yellow-300 rounded-xl w-16 h-16 flex items-center justify-center text-3xl">
-                  {candy.image}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Add New Item Form */}
                 <div>
-                  <p className="text-gray-600 mb-2">{candy.description}</p>
-                  <p className="text-lg font-bold text-red-600">${candy.price.toFixed(2)}</p>
+                  <h3 className="text-lg font-semibold mb-3">Add New Candy</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="name">Name</Label>
+                      <Input
+                        id="name"
+                        value={newItem.name}
+                        onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                        placeholder="Candy name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="price">Price ($)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={newItem.price || ''}
+                        onChange={(e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0})}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={newItem.description}
+                        onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                        placeholder="Candy description"
+                      />
+                    </div>
+                    <Button 
+                      onClick={addCandyItem}
+                      className="w-full bg-green-500 hover:bg-green-600"
+                    >
+                      <Plus className="mr-2" /> Add Candy
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Edit Item Form */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Edit Candy</h3>
+                  {editingItem ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="edit-name">Name</Label>
+                        <Input
+                          id="edit-name"
+                          value={editingItem.name}
+                          onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-price">Price ($)</Label>
+                        <Input
+                          id="edit-price"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={editingItem.price || ''}
+                          onChange={(e) => setEditingItem({...editingItem, price: parseFloat(e.target.value) || 0})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-description">Description</Label>
+                        <Textarea
+                          id="edit-description"
+                          value={editingItem.description}
+                          onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={updateCandyItem}
+                          className="flex-1 bg-blue-500 hover:bg-blue-600"
+                        >
+                          <Check className="mr-2" /> Save
+                        </Button>
+                        <Button 
+                          onClick={() => setEditingItem(null)}
+                          variant="outline"
+                        >
+                          <X className="mr-2" /> Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">Select a candy to edit</p>
+                  )}
                 </div>
               </div>
-              <Button 
-                onClick={() => addToCart(candy)}
-                className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white"
-              >
-                Add to Cart
-              </Button>
             </CardContent>
           </Card>
-        ))}
+        )}
+
+        {/* Candy Items Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {filteredItems.map((item) => (
+            <Card key={item.id} className="overflow-hidden border-2 border-yellow-200 hover:shadow-lg transition-shadow">
+              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center">
+                <span className="text-4xl">🍭</span>
+              </div>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">{item.name}</h3>
+                    <p className="text-gray-600 mt-1">{item.description}</p>
+                  </div>
+                  <span className="text-lg font-bold text-red-600">${item.price.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between mt-4">
+                  <Button 
+                    onClick={() => addToCart(item)}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  >
+                    Add to Cart
+                  </Button>
+                  
+                  {isStaffMode && (
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => setEditingItem(item)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        onClick={() => deleteCandyItem(item.id)}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Orders Section (Staff Only) */}
+        {isStaffMode && (
+          <Card className="bg-red-50 border-2 border-red-200">
+            <CardHeader>
+              <CardTitle className="text-red-800">Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {orders.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No orders yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map(order => (
+                    <div key={order.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-lg">{order.customerName}</h3>
+                          <p className="text-gray-600">Pickup: {order.pickupLocation}</p>
+                          <p className="text-sm text-gray-500">
+                            {order.timestamp.toLocaleDateString()} at {order.timestamp.toLocaleTimeString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">${order.total.toFixed(2)}</p>
+                          <Button 
+                            onClick={() => deleteOrder(order.id)}
+                            variant="destructive"
+                            size="sm"
+                            className="mt-2"
+                          >
+                            <Trash className="h-4 w-4 mr-1" /> Delete
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3">
+                        <h4 className="font-semibold">Items:</h4>
+                        <ul className="list-disc pl-5 mt-1">
+                          {order.items.map(item => (
+                            <li key={item.candy.id}>
+                              {item.quantity} x {item.candy.name} (${(item.candy.price * item.quantity).toFixed(2)})
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Shopping Cart Modal */}
+      {/* Staff Login Modal */}
+      {showLogin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Staff Login</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="mt-1"
+                  />
+                  {loginError && <p className="text-red-500 text-sm mt-1">{loginError}</p>}
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleLogin}
+                    className="flex-1"
+                  >
+                    Login
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setShowLogin(false);
+                      setPassword('');
+                      setLoginError('');
+                    }}
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Cart Modal */}
       {showCart && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto border-4 border-yellow-300 bg-white">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto">
             <CardHeader className="flex flex-row justify-between items-center">
-              <CardTitle className="text-2xl">Your Shopping Cart</CardTitle>
+              <CardTitle>Your Cart</CardTitle>
               <Button 
-                variant="ghost" 
-                size="sm" 
                 onClick={() => setShowCart(false)}
-                className="text-gray-500 hover:text-gray-700"
+                variant="ghost"
+                size="sm"
               >
                 <X className="h-5 w-5" />
               </Button>
             </CardHeader>
             <CardContent>
               {cart.length === 0 ? (
-                <p className="text-center py-8 text-gray-500">Your cart is empty</p>
+                <div className="text-center py-8">
+                  <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium">Your cart is empty</h3>
+                  <p className="mt-1 text-gray-500">Add some delicious candies!</p>
+                  <Button 
+                    onClick={() => setShowCart(false)}
+                    className="mt-4"
+                  >
+                    Continue Shopping
+                  </Button>
+                </div>
               ) : (
                 <>
-                  <div className="space-y-4 mb-6">
-                    {cart.map((item) => (
-                      <div 
-                        key={item.candy.id} 
-                        className="flex items-center justify-between p-4 border rounded-lg border-yellow-200"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="bg-gray-100 border-2 border-dashed border-yellow-300 rounded-xl w-12 h-12 flex items-center justify-center text-2xl">
-                            {item.candy.image}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">{item.candy.name}</h3>
-                            <p className="text-sm text-gray-600">${item.candy.price.toFixed(2)} each</p>
-                          </div>
+                  <div className="space-y-4">
+                    {cart.map(item => (
+                      <div key={item.candy.id} className="flex items-center justify-between border-b pb-4">
+                        <div>
+                          <h3 className="font-medium">{item.candy.name}</h3>
+                          <p className="text-gray-600">${item.candy.price.toFixed(2)} each</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button 
-                            size="sm" 
-                            variant="outline" 
                             onClick={() => updateQuantity(item.candy.id, item.quantity - 1)}
-                            className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                            size="sm"
+                            variant="outline"
                           >
-                            <Minus className="h-4 w-4" />
+                            -
                           </Button>
                           <span className="w-8 text-center">{item.quantity}</span>
                           <Button 
-                            size="sm" 
-                            variant="outline" 
                             onClick={() => updateQuantity(item.candy.id, item.quantity + 1)}
-                            className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                            size="sm"
+                            variant="outline"
                           >
-                            <Plus className="h-4 w-4" />
+                            +
                           </Button>
                           <Button 
-                            size="sm" 
-                            variant="destructive" 
                             onClick={() => removeFromCart(item.candy.id)}
+                            variant="destructive"
+                            size="sm"
+                            className="ml-2"
                           >
                             <Trash className="h-4 w-4" />
                           </Button>
@@ -581,40 +572,20 @@ export default function TwistedTreatsCandyShop() {
                     ))}
                   </div>
                   
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between text-lg font-bold mb-4">
+                  <div className="mt-6 pt-4 border-t">
+                    <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
                       <span>${cartTotal.toFixed(2)}</span>
                     </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="customer-name">Your Name</Label>
-                        <Input
-                          id="customer-name"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          placeholder="Enter your name"
-                          className="border-yellow-300"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pickup-location">Pickup Location</Label>
-                        <Input
-                          id="pickup-location"
-                          value={pickupLocation}
-                          onChange={(e) => setPickupLocation(e.target.value)}
-                          placeholder="Enter pickup location"
-                          className="border-yellow-300"
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleCheckout}
-                        className="w-full bg-green-500 hover:bg-green-600 text-white"
-                      >
-                        Place Order
-                      </Button>
-                    </div>
+                    <Button 
+                      onClick={() => {
+                        setShowCart(false);
+                        setShowCheckout(true);
+                      }}
+                      className="w-full mt-4 bg-green-600 hover:bg-green-700"
+                    >
+                      Proceed to Checkout
+                    </Button>
                   </div>
                 </>
               )}
@@ -623,67 +594,59 @@ export default function TwistedTreatsCandyShop() {
         </div>
       )}
 
-      {/* Staff Mode - Orders Section */}
-      {isStaffMode && (
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-center mb-6 text-white drop-shadow">Order Management</h2>
-          
-          {orders.length === 0 ? (
-            <p className="text-center py-8 text-yellow-100">No orders yet</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {orders.map((order) => (
-                <Card key={order.id} className="border-2 border-yellow-300 bg-white">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">Order #{order.id.slice(-4)}</CardTitle>
-                      <Button 
-                        size="sm" 
-                        variant="destructive" 
-                        onClick={() => handleCloseOrder(order.id)}
-                      >
-                        Close Order
-                      </Button>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      {new Date(order.timestamp).toLocaleString()}
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <p className="font-semibold">Customer: {order.customerName}</p>
-                      <p className="text-sm">Pickup: {order.pickupLocation}</p>
-                    </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      {order.items.map((item) => (
-                        <div key={item.candy.id} className="flex justify-between">
-                          <span>{item.candy.name} x{item.quantity}</span>
-                          <span>${(item.candy.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex justify-between font-bold border-t pt-2">
-                      <span>Total:</span>
-                      <span>${order.total.toFixed(2)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Checkout</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="customerName">Your Name</Label>
+                  <Input
+                    id="customerName"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter your name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="pickupLocation">Pickup Location</Label>
+                  <Input
+                    id="pickupLocation"
+                    value={pickupLocation}
+                    onChange={(e) => setPickupLocation(e.target.value)}
+                    placeholder="Where should we deliver?"
+                  />
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between font-bold">
+                    <span>Total:</span>
+                    <span>${cartTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleCheckout}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    disabled={!customerName || !pickupLocation}
+                  >
+                    Place Order
+                  </Button>
+                  <Button 
+                    onClick={() => setShowCheckout(false)}
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
-
-      {/* Footer with candy border */}
-      <footer className="mt-12 pt-6 border-t-4 border-dashed border-white text-center">
-        <div className="flex justify-center text-4xl mb-2">
-          🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭🍭
-        </div>
-        <p className="text-yellow-100 font-medium">© {new Date().getFullYear()} Twisted Treats Candy Shop</p>
-        <p className="text-sm text-yellow-200 mt-2">Sweetness delivered with a twist!</p>
-      </footer>
     </div>
   );
 }
